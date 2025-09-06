@@ -34,12 +34,18 @@ export enum Phase {
 export class Player {
     // Need to add more
     public static id : number = 0;
-    public playerId : number = 0;
+    // public playerId : number = 0;
     public name: string;
     public connected: boolean;
     public blanks = 5;
     public bullets = 3;
     public pendingHits = 0;
+    public health = 3;
+    // loot things
+    public money = 0;
+    public nft = 0;
+    public gems = 0;
+
     // public index: number = 0;
 
     public constructor(name: string) {

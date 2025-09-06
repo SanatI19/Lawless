@@ -42,7 +42,7 @@ function PreGame() {
         const handleSendPlayerArray = (playerArrayIn: Player[]) => {
             if (count == 0) {
                 count++;
-                thisId = playerArrayIn[playerArrayIn.length-1].playerId;
+                thisId = playerArrayIn.length-1;
             }
             setPlayerArray(playerArrayIn);
             setLength(playerArrayIn.length);
@@ -66,11 +66,11 @@ function PreGame() {
   return <div>
       <h1>Room {room}</h1>
       <div>
-        {playerArray.map((player: Player) =>
-            player.playerId === thisId ? ( 
-          <input key={player.playerId} type="text" placeholder="Player name" value={player.name} onChange={(e) => sendName(e.target.value,thisId)}/>  
+        {playerArray.map((player: Player, id: number) =>
+            id === thisId ? ( 
+          <input key={id} type="text" placeholder="Player name" value={player.name} onChange={(e) => sendName(e.target.value,thisId)}/>  
         ) : (
-            <p key={player.playerId}>{player.name}</p>
+            <p key={id}>{player.name}</p>
         )
         )}
       </div>
