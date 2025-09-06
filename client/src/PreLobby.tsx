@@ -38,7 +38,7 @@ function PreLobby() {
             setErr("Room does not exist")
         }
         else {
-            navigate(`/game/${roomId}`);
+            navigate(`/game/${roomId}`,{state :{room: roomId}});
         }
     })
 

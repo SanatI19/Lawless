@@ -1,61 +1,67 @@
-import {FormEvent, useEffect, useState} from "react";
-import { Socket, io } from "socket.io-client";
-import { ServerToClientEvents, ClientToServerEvents } from "../../typings";
-import {useSocket} from "./useSocket"
 
-const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io("http://localhost:3000/")
+import { useContext, useEffect, useState} from "react";
+import { useNavigate, useLocation} from "react-router-dom";
+import { SocketContext } from "./App";
+import { Player } from "../../typings";
+// const {state} = useLocation()
+
+
+// const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io("http://localhost:3000/")
 
 // socket.on("connect", () => {
 //   console.log(`Client ${socket.id}`)
 // })
 
-
+let count = 0;
+let thisId: number;
 
 function PreGame() {
-  const [room, setRoom] = useState("")
-  const [messages, setMessages] = useState<string[]>([]);
+  const socket = useContext(SocketContext);
+//   const navigate = useNavigate();
+//   const [room, setRoom] = useState("")
+//   const [messages, setMessages] = useState<string[]>([]);
+  const [playerArray, setPlayerArray] = useState<Player[]>([]);
+  const {state} = useLocation()
+  const room = state.room;
 
-  const handleSubmit = (e:FormEvent) => {
-    e.preventDefault();
-    // socket.emit("clientMsg",{msg,room});
-
-    setMsg("");
-    setRoom("");
-  };
-
-  const joinRoom = () => {
-    socket.emit("joinRoom",room);
-    setRoom("");
+  const sendName = (name: string, id: number)  => {
+    socket.emit("sendName",name,id,room);
   }
+  
+//   setRoom(state.room)
 
-  const createRoom = () => {
-    socket.emit("createRoom")
-  }
+//   const handleSubmit = (e:FormEvent) => {
+//     e.preventDefault();
+    useEffect(() => {
+        socket.emit("requestPlayerArray", room)
 
-//   useEffect(() => {
-//     socket.on("enterExistingRoom",() => {
-      
-//     })
-//   })
-  useSocket("enterExistingRoom",() => {
-
-  })
-
-  useEffect(() => {
-    socket.on("serverMsg", (data) => {
-      setMessages([...messages, data.msg]);
+        socket.on("sendPlayerArray", (playerArrayIn: Player[]) => {
+            if (count == 0) {
+                count++;
+                thisId = playerArrayIn[playerArrayIn.length-1].playerId;
+            }
+            setPlayerArray(playerArrayIn)
+        })
     })
-  }, [socket,messages]);
-  console.log(messages);
-  return <div>
 
+  return <div>
+      <h1>Room {room}</h1>
       <div>
+        {playerArray.map((player: Player) =>
+            player.playerId === thisId ? ( 
+          <input key={player.playerId} type="text" placeholder="Player name" value={player.name} onChange={(e) => sendName(e.target.value,thisId)}/>  
+        ) : (
+            <p key={player.playerId}>{player.name}</p>
+        )
+    )}
+      </div>
+      {/* <div>
         <input type="text" placeholder="Room number" value={room} onChange={(e) => setRoom(e.target.value.toUpperCase())}/>
         <button onClick={joinRoom}>Join Room</button>
       </div>
       <div>
         <button onClick={createRoom}>Create Room</button>
-      </div>
+      </div> */}
       {/* <form onSubmit={handleSubmit}>
         <input type="text" placeholder="Enter room key" value={room} onChange={(e) => setRoom(e.target.value)}/>
         <input type="text" placeholder="Enter message" value={msg} onChange={(e) => setMsg(e.target.value)}/>

@@ -30,19 +30,25 @@ const io = new Server<ClientToServerEvents,ServerToClientEvents>(server, {
 // //need to determine device id or a unique identifier
 
 //CAN HAVE SIMPLE FUNCTION WHICH TAKES DEVICE ID AND TRANSFORMS IT TO AN INTEGER FOR EASIER HANDLING
+
+const roomCodeLength = 5;
+const maxPlayers = 8;
+
 interface GameState {
     playerArray: Player[];
+    joinable: boolean;
 }
 
 function newGameState():GameState {
-    const playerArray : Player[] = [new Player("tom")]
-    return {playerArray}
+    const playerArray : Player[] = [new Player("Player1")]
+    let joinable = true;
+    return {playerArray, joinable};
 }
 
 function generateRoomCode(): string {
     let result = '';
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < roomCodeLength; i++) {
         const randomIndex = Math.floor(Math.random() * chars.length);
         result += chars[randomIndex];
     }
@@ -50,7 +56,7 @@ function generateRoomCode(): string {
 
 }
 
-const games = new Map<string,GameState>();
+const games : Record<string,GameState> = {};
 
 io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) => {
     socket.on("clientMsg",(data) => {
@@ -60,9 +66,14 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
 
     socket.on("joinRoom",(room: string) => {
         let outRoom = ""
-        if (games.has(room)) {
+        if (games[room] !== undefined && games[room].joinable) {
             // do some putting of the players in the array
             socket.join(room);
+            const playerArray = games[room].playerArray;
+            const index = playerArray.length;
+            const string = "Player" + (index+1);
+            playerArray.push(new Player(string))
+            playerArray[index].playerId = index;
             outRoom = room;
         }
         socket.emit("enterExistingRoom",outRoom);
@@ -74,7 +85,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         let roomId: string = "";
         for (let i = 0; i < 10000; i++) {
             roomId = generateRoomCode();
-            if (!games.has(roomId)) {
+            if (games[roomId] === undefined) {
                 ableToCreateRoom = true;
                 break
             }
@@ -82,12 +93,22 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
 
         if (ableToCreateRoom) {
             socket.join(roomId);
-            games.set(roomId,newGameState());
+            games[roomId] = newGameState();
+            if (games)
             socket.emit("enterExistingRoom",roomId);
         }
         else {
             socket.emit("unableToCreateRoom");
         }
+    })
+
+    socket.on("requestPlayerArray",(room: string) => {
+        socket.emit("sendPlayerArray",games[room].playerArray)
+    })
+
+    socket.on("sendName",(name: string, id: number, room: string) => {
+        games[room].playerArray[id].name = name;
+        socket.broadcast.to(room).emit("sendPlayerArray",games[room].playerArray);
     })
     // console.log(socket.id)
     // socket.on("nameEntered",(name) => {
