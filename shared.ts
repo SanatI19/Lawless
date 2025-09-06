@@ -5,7 +5,7 @@ export interface ServerToClientEvents {
     sendPlayerArray: (playerArray: Player[]) => void;
     startGame: () => void;
     sendPhase: (phase: Phase) => void;
-    sendPlayersAndPhase: (playerArray: Player[], phase: Phase) => void;
+    sendPlayersAndPhase: (playerArray: Player[], phase: Phase, changes : string[]) => void;
     // list all of the server to client events here (so easy goddamn)
 }
 
@@ -16,7 +16,7 @@ export interface ClientToServerEvents {
     requestPlayerArray: (room: string) => void;
     sendName: (name: string, id: number, room: string) => void;
     triggerStartGame: (room: string) => void;
-    requestPlayersAndPhase: (room: string) => void;
+    requestPlayersAndPhase: (room: string, changes: string[]) => void;
     sendBulletAndTarget: (bullet: number, targetId: number, id: number, room: string) => void;
     // list all of the client to server events here 
 }

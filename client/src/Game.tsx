@@ -21,12 +21,19 @@ function Game() {
 //   const [messages, setMessages] = useState<string[]>([]);
   const [playerArray, setPlayerArray] = useState<Player[]>([]);
   const [phase,setPhase] = useState<Phase>(Phase.Reset)
+  const [playerButtons,setPlayerButtons] = useState(Boolean);
   const {state} = useLocation()
   const room = state.room;
   const thisId = state.id;
 
   const sendName = (name: string, id: number)  => {
     socket.emit("sendName",name,id,room);
+  }
+
+  function getPosition(id: number) : number[] {
+    let x: number=0; let y: number=0;
+    // add logic to position the player
+    return [x,y]
   }
   
 
@@ -35,7 +42,7 @@ function Game() {
 //   const handleSubmit = (e:FormEvent) => {
 //     e.preventDefault();
     useEffect(() => {
-        socket.emit("requestPlayersAndPhase", room)
+        socket.emit("requestPlayersAndPhase", room,[""])
 
         const handleSendPlayersAndPhase = (playerArrayIn: Player[], phaseIn: Phase) => {
             setPlayerArray(playerArrayIn);

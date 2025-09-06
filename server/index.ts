@@ -40,13 +40,14 @@ interface GameState {
     phase: Phase;
     counter: number;
     totalPlayers: number;
+    bossId: number;
 }
 
 function newGameState():GameState {
     const playerArray : Player[] = [new Player("Player1")]
     let joinable = true;
     let phaseVal = Phase.Reset
-    return {playerArray, joinable,phase: phaseVal,counter:0,totalPlayers: 0};
+    return {playerArray, joinable,phase: phaseVal,counter:0,totalPlayers: 0, bossId: 0};
 }
 
 function generateRoomCode(): string {
@@ -121,8 +122,8 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         io.to(room).emit("startGame");
     })
 
-    socket.on("requestPlayersAndPhase",(room: string) => {
-        socket.emit("sendPlayersAndPhase",games[room].playerArray,games[room].phase);
+    socket.on("requestPlayersAndPhase",(room: string, changes: string[]) => {
+        socket.emit("sendPlayersAndPhase",games[room].playerArray,games[room].phase,changes);
     })
 
     socket.on("sendBulletAndTarget", (bullet: number, targetId: number, id: number, room: string) => {
@@ -137,7 +138,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         games[room].counter++;
         if (games[room].counter == games[room].totalPlayers) {
             games[room].counter = 0;
-            io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase)
+            io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["bullets","pendingHits"])
         }
     })
     // console.log(socket.id)
