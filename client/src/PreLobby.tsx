@@ -32,20 +32,28 @@ function PreLobby() {
     socket.emit("createRoom")
   }
   useEffect(() => {
-    socket.on("enterExistingRoom",(roomId) => {
+    const handleEnterExistingRoom = (roomId:string) => {
         console.log(roomId)
         if (roomId == "") {
             setErr("Room does not exist")
         }
         else {
-            navigate(`/game/${roomId}`,{state :{room: roomId}});
+            navigate(`/${roomId}/pregame`,{state :{room: roomId}});
         }
-    })
+    };
 
-    socket.on("unableToCreateRoom", () => {
-        setErr("Unable to create room, server full.")
-    })
+    const handleUnableToCreateRoom = () => {
+        setErr("Unable to create room, server full.");
+    };
+    socket.on("enterExistingRoom",handleEnterExistingRoom)
 
+    socket.on("unableToCreateRoom", handleUnableToCreateRoom);
+
+    return () => {
+      socket.off("enterExistingRoom",handleEnterExistingRoom);
+
+      socket.off("unableToCreateRoom", handleUnableToCreateRoom);
+    }
   })
 
 //   useSocket("enterExistingRoom",(roomId) => {

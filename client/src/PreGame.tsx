@@ -2,7 +2,7 @@
 import { useContext, useEffect, useState} from "react";
 import { useNavigate, useLocation} from "react-router-dom";
 import { SocketContext } from "./App";
-import { Player } from "../../typings";
+import { Player } from "../../shared";
 // const {state} = useLocation()
 
 
@@ -17,10 +17,11 @@ let thisId: number;
 
 function PreGame() {
   const socket = useContext(SocketContext);
-//   const navigate = useNavigate();
+  const navigate = useNavigate();
 //   const [room, setRoom] = useState("")
 //   const [messages, setMessages] = useState<string[]>([]);
   const [playerArray, setPlayerArray] = useState<Player[]>([]);
+  const [length,setLength] = useState(Number);
   const {state} = useLocation()
   const room = state.room;
 
@@ -28,6 +29,9 @@ function PreGame() {
     socket.emit("sendName",name,id,room);
   }
   
+  const triggerStartGame = () => {
+    socket.emit("triggerStartGame",room)
+  }
 //   setRoom(state.room)
 
 //   const handleSubmit = (e:FormEvent) => {
@@ -35,13 +39,28 @@ function PreGame() {
     useEffect(() => {
         socket.emit("requestPlayerArray", room)
 
-        socket.on("sendPlayerArray", (playerArrayIn: Player[]) => {
+        const handleSendPlayerArray = (playerArrayIn: Player[]) => {
             if (count == 0) {
                 count++;
                 thisId = playerArrayIn[playerArrayIn.length-1].playerId;
             }
-            setPlayerArray(playerArrayIn)
-        })
+            setPlayerArray(playerArrayIn);
+            setLength(playerArrayIn.length);
+        }
+
+        const handleStartGame = () => {
+          navigate(`/${room}/game`,{state :{room: room, id: thisId}})
+        }
+
+        socket.on("sendPlayerArray", handleSendPlayerArray);
+
+        socket.on("startGame", handleStartGame);
+
+        return () => {
+          socket.off("sendPlayerArray", handleSendPlayerArray);
+          socket.off("startGame", handleStartGame);
+        };
+
     })
 
   return <div>
@@ -53,8 +72,10 @@ function PreGame() {
         ) : (
             <p key={player.playerId}>{player.name}</p>
         )
-    )}
+        )}
       </div>
+      <br/>
+      {thisId === 0 ? (<button disabled={length < 3} onClick={triggerStartGame}>Start Game</button>) : null}
       {/* <div>
         <input type="text" placeholder="Room number" value={room} onChange={(e) => setRoom(e.target.value.toUpperCase())}/>
         <button onClick={joinRoom}>Join Room</button>

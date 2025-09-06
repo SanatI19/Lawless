@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
 import PreLobby from "./PreLobby";
 import PreGame from "./PreGame";
-import { ServerToClientEvents, ClientToServerEvents } from "../../typings";
+import Game from "./Game";
+import { ServerToClientEvents, ClientToServerEvents } from "../../shared";
 
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io("http://localhost:3000");
 
@@ -20,7 +21,8 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<PreLobby />} />
-          <Route path="/game/:roomId" element={<PreGame />} />
+          <Route path="/:roomId/pregame" element={<PreGame />} />
+          <Route path="/:roomId/game" element={<Game />} />
         </Routes>
       </BrowserRouter>
     </SocketContext.Provider>

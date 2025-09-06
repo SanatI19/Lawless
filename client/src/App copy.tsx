@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import PreLobby from "./PreLobby";
 // import Game from "./Game";
 import { Socket, io } from "socket.io-client";
-import { ServerToClientEvents, ClientToServerEvents } from "../../typings";
+import { ServerToClientEvents, ClientToServerEvents } from "../../shared";
 
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io("http://localhost:3000/")
 

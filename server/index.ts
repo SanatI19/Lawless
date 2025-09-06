@@ -3,7 +3,7 @@ import { createServer } from "http";
 import { Server, Socket } from "socket.io";
 import { instrument } from "@socket.io/admin-ui";
 import cors from "cors";
-import {ServerToClientEvents , ClientToServerEvents, Player} from "../typings";
+import {ServerToClientEvents , ClientToServerEvents, Player, Phase} from "../shared";
 const app = express()
 app.use(cors());
 const server = createServer(app)
@@ -37,12 +37,16 @@ const maxPlayers = 8;
 interface GameState {
     playerArray: Player[];
     joinable: boolean;
+    phase: Phase;
+    counter: number;
+    totalPlayers: number;
 }
 
 function newGameState():GameState {
     const playerArray : Player[] = [new Player("Player1")]
     let joinable = true;
-    return {playerArray, joinable};
+    let phaseVal = Phase.Reset
+    return {playerArray, joinable,phase: phaseVal,counter:0,totalPlayers: 0};
 }
 
 function generateRoomCode(): string {
@@ -109,6 +113,32 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
     socket.on("sendName",(name: string, id: number, room: string) => {
         games[room].playerArray[id].name = name;
         socket.broadcast.to(room).emit("sendPlayerArray",games[room].playerArray);
+    })
+
+    socket.on("triggerStartGame",(room: string) => {
+        games[room].joinable = false;
+        games[room].totalPlayers = games[room].playerArray.length;
+        io.to(room).emit("startGame");
+    })
+
+    socket.on("requestPlayersAndPhase",(room: string) => {
+        socket.emit("sendPlayersAndPhase",games[room].playerArray,games[room].phase);
+    })
+
+    socket.on("sendBulletAndTarget", (bullet: number, targetId: number, id: number, room: string) => {
+        const playerArray = games[room].playerArray;
+        if (bullet == 0) {
+            playerArray[id].blanks--;
+        }
+        else {
+            playerArray[id].bullets--;
+            playerArray[targetId].pendingHits++;
+        }
+        games[room].counter++;
+        if (games[room].counter == games[room].totalPlayers) {
+            games[room].counter = 0;
+            io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase)
+        }
     })
     // console.log(socket.id)
     // socket.on("nameEntered",(name) => {
