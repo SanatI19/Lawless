@@ -22,7 +22,7 @@ export interface ClientToServerEvents {
 }
 
 export enum Phase {
-    Reset="RESET",
+    // Reset="RESET",
     LoadAndAim="LOADANDAIM",
     GodfatherPriv="GODFATHERPRIV",
     Gambling="GAMBLING",
@@ -41,10 +41,17 @@ export class Player {
     public bullets = 3;
     public pendingHits = 0;
     public health = 3;
+    //target of a bullet
+    public target = -1;
+    public bulletChoice = -1;
+    public godfather = false;
     // loot things
     public money = 0;
     public nft = 0;
     public gems = 0;
+
+    public completedPhase = false;
+
 
     // public index: number = 0;
 
@@ -54,4 +61,4 @@ export class Player {
     }
 }
 
-export const __forceRuntime = true;
+// export const __forceRuntime = true;

@@ -47,8 +47,12 @@ interface GameState {
 function newGameState():GameState {
     const playerArray : Player[] = [new Player("Player1")]
     let joinable = true;
-    let phaseVal = Phase.Reset
+    let phaseVal = Phase.LoadAndAim;
     return {playerArray, joinable,phase: phaseVal,counter:0,totalPlayers: 0, bossId: 0, discardedBullets: 0};
+}
+
+function chooseGodfather(totalPlayers : number) {
+    return Math.floor(Math.random() * totalPlayers);
 }
 
 function generateRoomCode(): string {
@@ -120,6 +124,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
     socket.on("triggerStartGame",(room: string) => {
         games[room].joinable = false;
         games[room].totalPlayers = games[room].playerArray.length;
+        games[room].playerArray[chooseGodfather(games[room].totalPlayers)].godfather = true;
         io.to(room).emit("startGame");
     })
 
@@ -129,6 +134,8 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
 
     socket.on("sendBulletAndTarget", (bullet: number, targetId: number, id: number, room: string) => {
         const playerArray = games[room].playerArray;
+        playerArray[id].target = targetId;
+        playerArray[id].completedPhase = true;
         if (bullet == 0) {
             playerArray[id].blanks--;
         }
@@ -138,9 +145,13 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
             games[room].discardedBullets++;
         }
         games[room].counter++;
+        console.log(games[room].counter)
+        console.log(games[room].totalPlayers)
         if (games[room].counter == games[room].totalPlayers) {
+            console.log("HEYOOOOO")
             games[room].counter = 0;
-            io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["bullets","pendingHits"])
+            games[room].phase=Phase.GodfatherPriv;
+            io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["target"])
         }
     })
     // console.log(socket.id)
