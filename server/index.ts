@@ -3,7 +3,7 @@ import { createServer } from "http";
 import { Server, Socket } from "socket.io";
 import { instrument } from "@socket.io/admin-ui";
 import cors from "cors";
-import {ServerToClientEvents , ClientToServerEvents, Player, Phase} from "../shared";
+import {ServerToClientEvents , ClientToServerEvents, Player, Phase, Loot, LootType} from "../shared";
 const app = express()
 app.use(cors());
 const server = createServer(app)
@@ -15,6 +15,7 @@ const io = new Server<ClientToServerEvents,ServerToClientEvents>(server, {
     }
 
 });
+
 
 //socket.on is listener
 //socket.emit("name", data(stuff that is sent))
@@ -39,16 +40,62 @@ interface GameState {
     joinable: boolean;
     phase: Phase;
     counter: number;
-    totalPlayers: number;
+    totalAlivePlayers: number;
     bossId: number;
     discardedBullets: number;
+    lootDeck: Loot[];
+    lootDict: Record<number,Loot>;
 }
+
+function randomizeArray(array: any[]) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]]; // swap elements
+    }
+    return array;
+}
+
+function createNewRandomizedLootDeck(): Loot[] {
+    const lootCards: Loot[] = [];
+    for (let i = 0; i < 64; i++) {
+        if (i < 15) {
+            lootCards.push(new Loot(LootType.cash,5000));
+        }
+        else if (i < 30) {
+            lootCards.push(new Loot(LootType.cash,10000));
+        }
+        else if (i < 40) {
+            lootCards.push(new Loot(LootType.cash,10000));
+        }
+        else if (i < 50) {
+            lootCards.push(new Loot(LootType.nft));
+        }
+        else if (i < 55) {
+            lootCards.push(new Loot(LootType.gem,1000));
+        }
+        else if (i < 58) {
+            lootCards.push(new Loot(LootType.gem,5000));
+        }
+        else if (i < 59) {
+            lootCards.push(new Loot(LootType.gem,10000));
+        }
+        else if (i < 62) {
+            lootCards.push(new Loot(LootType.clip));
+        }
+        else {
+            lootCards.push(new Loot(LootType.medKit));
+        }
+    }
+    return randomizeArray(lootCards);
+}
+
 
 function newGameState():GameState {
     const playerArray : Player[] = [new Player("Player1")]
     let joinable = true;
     let phaseVal = Phase.LoadAndAim;
-    return {playerArray, joinable,phase: phaseVal,counter:0,totalPlayers: 0, bossId: 0, discardedBullets: 0};
+    const lootVals: Loot[] = createNewRandomizedLootDeck();
+    return {playerArray, joinable,phase: phaseVal,counter:0,totalAlivePlayers: 0, bossId: 0, discardedBullets: 0, lootDeck: lootVals,lootDict: {}};
 }
 
 function chooseGodfather(totalPlayers : number) {
@@ -71,6 +118,19 @@ function setAllUncompleted(playerArray: Player[]): void {
         player.completedPhase = false;
     }
 }
+
+function getLootDict(lootCards: Loot[]): Record<number,Loot> {
+    const lootDict : Record<number,Loot> = {};
+    lootDict[0] = new Loot(LootType.godfather);
+    for (let i = 0; i < 8; i++) {
+        const card = lootCards.pop();
+        if (card !== undefined) {
+            lootDict[i+1] = card;
+        }
+    }
+    return lootDict;
+}
+
 
 function setGodfatherIncomplete(playerArray: Player[]): void {
     for (const player of playerArray) {
@@ -137,8 +197,8 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
 
     socket.on("triggerStartGame",(room: string) => {
         games[room].joinable = false;
-        games[room].totalPlayers = games[room].playerArray.length;
-        games[room].playerArray[chooseGodfather(games[room].totalPlayers)].godfather = true;
+        games[room].totalAlivePlayers = games[room].playerArray.length;
+        games[room].playerArray[chooseGodfather(games[room].totalAlivePlayers)].godfather = true;
         io.to(room).emit("startGame");
     })
 
@@ -161,9 +221,9 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
                 games[room].discardedBullets++;
             }
             games[room].counter++;
-            console.log(games[room].counter)
-            console.log(games[room].totalPlayers)
-            if (games[room].counter == games[room].totalPlayers) {
+            // console.log(games[room].counter)
+            // console.log(games[room].totalAlivePlayers)
+            if (games[room].counter == games[room].totalAlivePlayers) {
                 console.log("HEYOOOOO")
                 games[room].counter = 0;
                 games[room].phase=Phase.GodfatherPriv;
@@ -186,6 +246,42 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         playerArray[target].completedPhase = false;
         playerArray[playerArray[target].target].pendingHits -= playerArray[target].bulletChoice;
         io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["player"])
+    })
+
+    socket.on("sendHidingChoice",(id: number, choice: boolean, room:string) => {
+        const playerArray = games[room].playerArray;
+        playerArray[id].completedPhase = true;
+        playerArray[id].hiding = choice;
+        games[room].counter++
+        if (games[room].counter == games[room].totalAlivePlayers) {
+            games[room].counter = 0;
+            games[room].phase=Phase.Looting;
+            for (const player of playerArray) {
+                if (player.hiding) {
+                    player.pendingHits = 0;
+                }
+                else {
+                    player.health -= player.pendingHits;
+                    if (player.health <= 0) {
+                        player.dead = true;
+                        games[room].totalAlivePlayers--;
+                    }
+                    else {
+                        player.completedPhase = false;
+                    }
+                }
+            }
+            // setAllUncompleted(playerArray);
+            const lootDict = getLootDict(games[room].lootDeck);
+            games[room].lootDict = lootDict;
+            io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["hiding","health","damaged"])
+            io.to(room).emit("sendLootDict", lootDict);
+        }
+
+    })
+
+    socket.on("requestLootDict",(room: string) => {
+        socket.emit("sendLootDict",games[room].lootDict);
     })
     // console.log(socket.id)
     // socket.on("nameEntered",(name) => {

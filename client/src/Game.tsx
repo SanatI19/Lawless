@@ -2,7 +2,7 @@
 import { useContext, useEffect, useState} from "react";
 import { useNavigate, useLocation} from "react-router-dom";
 import { SocketContext } from "./App";
-import { Player , Phase} from "../../shared";
+import { Player , Phase, Loot, LootType} from "../../shared";
 // const {state} = useLocation()
 
 
@@ -26,12 +26,17 @@ function Game() {
   const [bulletChoice,setBulletChoice] = useState(false);
   const [playerButtons,setPlayerButtons] = useState(Boolean);
   const [completedPhase,setCompletedPhase] = useState(false);
+  // const [hiding, setHiding] = useState(false);
+  const [hidingArray, setHidingArray] = useState<boolean[]>([false])
+  const [damagedArray, setDamagedArray] = useState<boolean[]>([false])
+  const [lootDict,setLootDict] = useState<Record<number,Loot>>({});
   const [circleStrokeColor,setCircleStrokeColor] = useState("black");
   const [targetArray,setTargetArray] = useState<number[]>([]);
   const [ammo,setAmmo] = useState(-1)
   const [hoverIndex,setHoverIndex] = useState(-1);
   const [hoverBullet,setHoverBullet] = useState(Boolean);
   const [hoverBlank,setHoverBlank] = useState(Boolean);
+  // const [thisChoosingLoot]
   // const [targetIndex,setTargetIndex] = useState(-1);
   const {state} = useLocation()
   const room = state.room;
@@ -46,16 +51,16 @@ function Game() {
   function getX(id: number) : number {
     let x: number=0;
     if (id == 5 || id == 7) {
-      x = 10
+      x = 15
     }
     else if (id == 3 || id == 0) {
-      x = 30
+      x = 35
     }
     else if (id == 2 || id == 1) {
-      x = 50
+      x = 55
     }
     else if (id == 6 || id == 4) {
-      x = 70
+      x = 75
     }
     // add logic to position the player
     return x
@@ -80,36 +85,81 @@ function Game() {
   }
 
   function getInnerY(id: number): number {
-    let y = 0;
-    if (id == 0 || id == 2) {
-      y = 10.5
+    let y = getY(id)-1.5;
+    // if (id == 0 || id == 2) {
+    //   y = 10.5
+    // }
+    // else if (id == 4 || id == 7) {
+    //   y = 20
+    // }
+    // else if (id == 5 || id == 6) {
+    //   y = 30
+    // }
+    // else if (id == 3 || id == 1) {
+    //   y = 36.5
+    // }
+
+    if (id == 5 || id == 6) {
+      y -= 5
     }
     else if (id == 4 || id == 7) {
-      y = 20
-    }
-    else if (id == 5 || id == 6) {
-      y = 30
-    }
-    else if (id == 3 || id == 1) {
-      y = 36.5
+      y += 5
     }
     return y
   }
   function getInnerX(id: number): number {
-    let x: number=0;
-    if (id == 5 || id == 7) {
-      x = 20
+    // let x: number=0;
+    // if (id == 5 || id == 7) {
+    //   x = 20
+    // }
+    // else if (id == 3 || id == 0) {
+    //   x = 35
+    // }
+    // else if (id == 2 || id == 1) {
+    //   x = 55
+    // }
+    // else if (id == 6 || id == 4) {
+    //   x = 60
+    // }
+    let x = getX(id);
+
+    if (id == 0 || id == 3) {
+      x -= 10.5
     }
-    else if (id == 3 || id == 0) {
-      x = 30
-    }
-    else if (id == 2 || id == 1) {
-      x = 50
-    }
-    else if (id == 6 || id == 4) {
-      x = 60
+    else if (id == 1 || id == 2) {
+      x += 10.5
     }
     return x
+  }
+
+  function getLootX(id: number) : number {
+    let x = 0;
+    if (id == 0) {
+      x = 45
+    }
+    if (id == 1 || id == 5) {
+      x = 30
+    }
+    else if (id == 2 || id == 6) {
+      x = 40
+    }
+    else if (id == 3 || id == 7) {
+      x = 50
+    }
+    else if (id == 4 || id == 8) {
+      x = 60
+    }
+    return x;
+  }
+  function getLootY(id: number) : number {
+    let y = 30;
+    if (id == 0) {
+      y = 14
+    }
+    else if (id <=4) {
+      y = 22
+    }
+    return y;
   }
 
   function getColor(health: number) : string {
@@ -121,13 +171,13 @@ function Game() {
       color = "yellow"
     }
     else if (health == 1) {
-      color == "red"
+      color = "red"
     }
 
     return color
   }
   // console.log(thisPlayer.bullets)
-
+  console.log(playerHealth)
   function changeInit(playerArrayIn: Player[]): void {
     const names = playerArrayIn.map(player => player.name);
     const health = playerArrayIn.map(player => player.health);
@@ -162,13 +212,41 @@ function Game() {
       }
     }
   }
-  console.log(thisPlayer.bullets)
+
+  function hidingChosen(choice : boolean) : void {
+    setCompletedPhase(true)
+    socket.emit("sendHidingChoice",thisId,choice,room);
+  }
+
+  function getImage(type: LootType): string {
+    let src = "";
+    if (type == LootType.cash) {
+      src = "../public/images/money.svg";
+    }
+    else if (type == LootType.clip) {
+      src = "../public/images/bullet.svg";
+    }
+    else if (type == LootType.gem) {
+      src = "../public/images/gem.svg";
+    }
+    else if (type == LootType.godfather) {
+      src = "../public/images/chief.svg";
+    }
+    else if (type == LootType.medKit) {
+      src = "../public/images/heart.svg";
+    }
+    else if (type == LootType.nft) {
+      src = "../public/images/nft.svg";
+    }
+    return src
+  }
+  // console.log(thisPlayer.bullets)
 
   const doNothing = () => {
 
   }
   
-  
+  console.log(lootDict)
 
 //   setRoom(state.room)
 
@@ -192,12 +270,19 @@ function Game() {
           setPlayerButtons(false);
         }
       }
+      if (phase === "LOOTING") {
+        socket.emit("requestLootDict",room);
+      }
     },[phase,completedPhase])
     
-    console.log(completedPhase)
-    console.log(targetArray)
+    console.log(thisPlayer)
+
+    // console.log(completedPhase)
+    // console.log(targetArray)
     useEffect(() => {
         // socket.emit("requestPlayersAndPhase", room,["INIT"])
+
+        // const handleSendNames = (playerArrayIn: Player[]) 
 
         const handleSendPlayersAndPhase = (playerArrayIn: Player[], phaseIn: Phase, changes: string[]) => {
           console.log(phaseIn)
@@ -216,13 +301,33 @@ function Game() {
                 const targets = playerArrayIn.map(player => player.target);
                 setTargetArray(targets);
               }
+              else if (change == "health") {
+                const health = playerArrayIn.map(player => player.health);
+                setPlayerHealth(health);
+              }
+              else if (change == "hiding") {
+                const hiding = playerArrayIn.map(player => player.hiding);
+                setHidingArray(hiding);
+              }
+              else if (change == "damaged") {
+                const damaged = playerArrayIn.map(player => (player.pendingHits > 0) ? true : false)
+                setDamagedArray(damaged);
+              }
             }
             // setLength(playerArrayIn.length);
         }
+
+        const handleSendLootDict = (lootDictIn: Record<number,Loot>) => {
+          console.log(lootDictIn);
+          setLootDict(lootDictIn);
+        }
+
         socket.on("sendPlayersAndPhase", handleSendPlayersAndPhase);
+        socket.on("sendLootDict",handleSendLootDict);
 
         return () => {
             socket.off("sendPlayersAndPhase", handleSendPlayersAndPhase);
+            socket.on("sendLootDict",handleSendLootDict);
         }
     })
 
@@ -297,11 +402,38 @@ function Game() {
                     {targetArray.map((target:number,index:number) => 
                       <line key={index} x1={getX(index)} x2={getX(index) + (getX(target)-getX(index))*0.2} y1={getY(index)} y2={getY(index) + (getY(target)-getY(index))*0.2} stroke="black" strokeWidth="0.75"></line>
                     )}
+                    {(!completedPhase) ? (
+                      <g id="choices">
+                      <g id="stay" onClick={() => {
+                        hidingChosen(false);
+                        
+                      }} onMouseEnter={() => setHoverBullet(true)} 
+                          onMouseLeave={() => setHoverBullet(false)}>
+                        <rect x="40" y="20" width="5" height="10" fill="grey" stroke={hoverBullet ? ("yellow") : ("black")} strokeWidth={hoverBullet ? ("0.2") : ("0.1")}></rect>
+                        <text x="41" y="25" fontSize="1">Stay</text>
+                      </g>
+                      <g id="hide" onClick={() => {
+                        hidingChosen(true);
+                      }} onMouseEnter={() => setHoverBlank(true)} 
+                        onMouseLeave={() => setHoverBlank(false)}>
+                        <rect x="60" y="20" width="5" height="10" fill="grey" stroke={hoverBlank ? ("yellow") : ("black")} strokeWidth={hoverBlank ? ("0.2") : ("0.1")}></rect>
+                        <text x="61" y="25" fontSize="1">Hide</text>
+                      </g>
+                      </g>) : null}
                   </g>;
               case "SHOOTING":
                 return <text fill="red">Dead</text>;
-              case "LOOTING":
-                return <text fill="red">Dead</text>;
+              case "LOOTING": // need to add the animations and shiet for the shooting
+                return <g>
+                  {Object.values(lootDict).map((value: Loot, index: number) => 
+                    value.type !== LootType.empty ? (
+                      <g key={index}>
+                        <image href={getImage(value.type)} height="7" width="7" x={getLootX(index)} y={getLootY(index)}/>
+                        <text x={getLootX(index)+0.5} y={getLootY(index)+2} fontSize="2">{value.value > 0 ? ("$"+value.value) : ""}</text>
+                      </g>) : null
+                  )}
+                  
+                </g>;
               case "ROUNDEND":
                 return <text fill="red">Dead</text>;
             }

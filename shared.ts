@@ -6,6 +6,7 @@ export interface ServerToClientEvents {
     startGame: () => void;
     sendPhase: (phase: Phase) => void;
     sendPlayersAndPhase: (playerArray: Player[], phase: Phase, changes : string[]) => void;
+    sendLootDict: (lootDict: Record<number, Loot>) => void;
     // list all of the server to client events here (so easy goddamn)
 }
 
@@ -19,6 +20,8 @@ export interface ClientToServerEvents {
     requestPlayersAndPhase: (room: string, changes: string[]) => void;
     sendBulletAndTarget: (bullet: number, targetId: number, id: number, room: string) => void;
     sendGodfatherDecision: (id: number, target: number, room: string) => void;
+    sendHidingChoice: (id: number, choice: boolean, room : string) => void;
+    requestLootDict: (room: string) => void;
     // list all of the client to server events here 
 }
 
@@ -42,11 +45,14 @@ export class Player {
     public bullets = 3;
     public pendingHits = 0;
     public health = 3;
+    public dead = false;
     //target of a bullet
     public target = -1;
     public bulletChoice = -1;
     public godfather = false;
     public hiding = false;
+    public choosingLoot = false;
+    // public damaged = false;
     // loot things
     public money = 0;
     public nft = 0;
@@ -63,4 +69,23 @@ export class Player {
     }
 }
 
+export enum LootType {
+    nft,
+    gem,
+    cash,
+    medKit,
+    clip,
+    godfather,
+    empty
+}
+
+export class Loot {
+    public type: LootType;
+    public value = 0;
+
+    public constructor (typeVal: LootType, cashVal: number = 0) {
+        this.type = typeVal;
+        this.value = cashVal;
+    }
+}
 // export const __forceRuntime = true;
