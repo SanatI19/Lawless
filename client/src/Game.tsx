@@ -25,6 +25,7 @@ function Game() {
   const [phase,setPhase] = useState<Phase>(Phase.LoadAndAim)
   const [bulletChoice,setBulletChoice] = useState(false);
   const [playerButtons,setPlayerButtons] = useState(Boolean);
+  const [completedPhase,setCompletedPhase] = useState(false);
   const [circleStrokeColor,setCircleStrokeColor] = useState("black");
   const [targetArray,setTargetArray] = useState<number[]>([]);
   const [ammo,setAmmo] = useState(-1)
@@ -131,7 +132,7 @@ function Game() {
     const names = playerArrayIn.map(player => player.name);
     const health = playerArrayIn.map(player => player.health);
     setPlayerNames(names);
-    setThisPlayer(playerArrayIn[thisId]);
+    // setThisPlayer(playerArrayIn[thisId]);
     // setPhase(phaseIn);
     setPlayerHealth(health);
     const targets = playerArrayIn.map(player => player.target);
@@ -147,15 +148,25 @@ function Game() {
     // console.log()
     // const index = targetIndex;
     console.log(index+ " got clicked")
-    socket.emit("sendBulletAndTarget",ammo,index,thisId,room);  
+    if (phase == Phase.LoadAndAim) {
+      setCompletedPhase(true);
+      socket.emit("sendBulletAndTarget",ammo,index,thisId,room);
+    }
+    else if (phase == Phase.GodfatherPriv) {
+      if (thisPlayer.godfather) {
+        console.log("godfather decision sent")
+        socket.emit("sendGodfatherDecision",thisId, index,room);
+      }
+      else {
+        socket.emit("sendBulletAndTarget",ammo,index,thisId,room);
+      }
+    }
   }
   console.log(thisPlayer.bullets)
 
   const doNothing = () => {
 
   }
-
-  console.log(targetArray)
   
   
 
@@ -174,19 +185,25 @@ function Game() {
       }
       if (phase === "GODFATHERPRIV") {
         console.log(thisPlayer)
-        if (thisPlayer.godfather) {
+        if (!completedPhase) {
           setPlayerButtons(true);
         }
+        else {
+          setPlayerButtons(false);
+        }
       }
-    },[phase])
+    },[phase,completedPhase])
     
-
+    console.log(completedPhase)
+    console.log(targetArray)
     useEffect(() => {
         // socket.emit("requestPlayersAndPhase", room,["INIT"])
 
         const handleSendPlayersAndPhase = (playerArrayIn: Player[], phaseIn: Phase, changes: string[]) => {
           console.log(phaseIn)
-          setPhase(phaseIn)
+          setPhase(phaseIn);
+          setThisPlayer(playerArrayIn[thisId]);
+          setCompletedPhase(playerArrayIn[thisId].completedPhase);
           for (const change of changes) {
               if (change == "INIT") {
                 changeInit(playerArrayIn);
@@ -212,13 +229,13 @@ function Game() {
   return <svg id="main" x = "20px" y="20px" xmlns = "http://www.w3.org/2000/svg" viewBox="0 0 100 50">
       <g>
           {playerNames.map((name: string, index: number) => 
-          <g key={index} onClick={((playerButtons) && (index!== thisId)) ? (
+          <g key={index} onClick={((playerButtons) && (index!== thisId) && !(!thisPlayer.godfather && (index === targetArray[thisId]))) ? (
             () => {
               playerClicked(index);
               setPlayerButtons(false);
               setHoverIndex(-1);
             }
-          ): doNothing} onMouseEnter={((playerButtons) && (index!== thisId)) ? (
+          ): doNothing} onMouseEnter={((playerButtons) && (index!== thisId)  && !(!thisPlayer.godfather && (index === targetArray[thisId]))) ? (
             () => setHoverIndex(index)
           ): doNothing} onMouseLeave={((playerButtons) && (index!== thisId)) ? (
             () => setHoverIndex(-1)
@@ -235,16 +252,16 @@ function Game() {
             ) : null}
           </g>
           )}
-          {/* {playerHealth.map((health: number, index: number) => 
-
-          )} */}
+        {(completedPhase) ? (
+          <text x="40" y="24" fontSize="2">Waiting for other players...</text>
+        ) : (null)}
       </g>
       <g>
           {(() => {
             switch (phase) {
               case "LOADANDAIM":
                 return <g>
-                  {((bulletChoice) && (!thisPlayer.completedPhase)) ? (
+                  {((bulletChoice) && (!completedPhase)) ? (
                     <>
                     {thisPlayer.bullets > 0 && (
                       <g id="bullet" onClick={() => {
@@ -276,7 +293,11 @@ function Game() {
                     )}
                   </g>;
               case "GAMBLING":
-                return <text fill="red">Dead</text>;
+                return <g>
+                    {targetArray.map((target:number,index:number) => 
+                      <line key={index} x1={getX(index)} x2={getX(index) + (getX(target)-getX(index))*0.2} y1={getY(index)} y2={getY(index) + (getY(target)-getY(index))*0.2} stroke="black" strokeWidth="0.75"></line>
+                    )}
+                  </g>;
               case "SHOOTING":
                 return <text fill="red">Dead</text>;
               case "LOOTING":

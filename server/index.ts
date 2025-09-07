@@ -66,6 +66,20 @@ function generateRoomCode(): string {
 
 }
 
+function setAllUncompleted(playerArray: Player[]): void {
+    for (const player of playerArray) {
+        player.completedPhase = false;
+    }
+}
+
+function setGodfatherIncomplete(playerArray: Player[]): void {
+    for (const player of playerArray) {
+        if (player.godfather) {
+            player.completedPhase = false;
+        }
+    }
+}
+
 const games : Record<string,GameState> = {};
 
 io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) => {
@@ -136,23 +150,42 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         const playerArray = games[room].playerArray;
         playerArray[id].target = targetId;
         playerArray[id].completedPhase = true;
-        if (bullet == 0) {
-            playerArray[id].blanks--;
+        playerArray[id].bulletChoice = bullet;
+        if (games[room].phase == Phase.LoadAndAim) {
+            if (bullet == 0) {
+                playerArray[id].blanks--;
+            }
+            else {
+                playerArray[id].bullets--;
+                playerArray[targetId].pendingHits++;
+                games[room].discardedBullets++;
+            }
+            games[room].counter++;
+            console.log(games[room].counter)
+            console.log(games[room].totalPlayers)
+            if (games[room].counter == games[room].totalPlayers) {
+                console.log("HEYOOOOO")
+                games[room].counter = 0;
+                games[room].phase=Phase.GodfatherPriv;
+                // setAllUncompleted(playerArray);
+                setGodfatherIncomplete(playerArray);
+                io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["target","player"])
+            }
         }
-        else {
-            playerArray[id].bullets--;
-            playerArray[targetId].pendingHits++;
-            games[room].discardedBullets++;
+        else if (games[room].phase == Phase.GodfatherPriv) {
+            playerArray[targetId].pendingHits += bullet;
+            games[room].phase=Phase.Gambling;
+            setAllUncompleted(playerArray);
+            io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["target","player"])
         }
-        games[room].counter++;
-        console.log(games[room].counter)
-        console.log(games[room].totalPlayers)
-        if (games[room].counter == games[room].totalPlayers) {
-            console.log("HEYOOOOO")
-            games[room].counter = 0;
-            games[room].phase=Phase.GodfatherPriv;
-            io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["target"])
-        }
+    })
+
+    socket.on("sendGodfatherDecision",(id: number, target: number, room: string) => {
+        const playerArray = games[room].playerArray;
+        playerArray[id].completedPhase = true;
+        playerArray[target].completedPhase = false;
+        playerArray[playerArray[target].target].pendingHits -= playerArray[target].bulletChoice;
+        io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["player"])
     })
     // console.log(socket.id)
     // socket.on("nameEntered",(name) => {

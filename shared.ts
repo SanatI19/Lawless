@@ -18,6 +18,7 @@ export interface ClientToServerEvents {
     triggerStartGame: (room: string) => void;
     requestPlayersAndPhase: (room: string, changes: string[]) => void;
     sendBulletAndTarget: (bullet: number, targetId: number, id: number, room: string) => void;
+    sendGodfatherDecision: (id: number, target: number, room: string) => void;
     // list all of the client to server events here 
 }
 
@@ -45,6 +46,7 @@ export class Player {
     public target = -1;
     public bulletChoice = -1;
     public godfather = false;
+    public hiding = false;
     // loot things
     public money = 0;
     public nft = 0;
