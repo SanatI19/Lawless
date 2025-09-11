@@ -7,6 +7,10 @@ export interface ServerToClientEvents {
     sendPhase: (phase: Phase) => void;
     sendPlayersAndPhase: (playerArray: Player[], phase: Phase, changes : string[]) => void;
     sendLootDict: (lootDict: Record<number, Loot>) => void;
+    sendGodfatherIndex: (index: number) => void;
+    sendLootPlayerTurn: (index: number) => void;
+    getGameState: (gameState: GameState) => void;
+    getPlayerNames: (playerArray: Player[]) => void;
     // list all of the server to client events here (so easy goddamn)
 }
 
@@ -17,12 +21,30 @@ export interface ClientToServerEvents {
     requestPlayerArray: (room: string) => void;
     sendName: (name: string, id: number, room: string) => void;
     triggerStartGame: (room: string) => void;
-    requestPlayersAndPhase: (room: string, changes: string[]) => void;
+    requestInitialState: (room: string) => void;
     sendBulletAndTarget: (bullet: number, targetId: number, id: number, room: string) => void;
     sendGodfatherDecision: (id: number, target: number, room: string) => void;
     sendHidingChoice: (id: number, choice: boolean, room : string) => void;
     requestLootDict: (room: string) => void;
+    addItemToPlayer: (itemIndex: number, playerIndex: number, room:string) => void;
+    continueToGambling: (room: string) => void;
     // list all of the client to server events here 
+}
+
+
+export interface GameState {
+    playerArray: Player[];
+    joinable: boolean;
+    phase: Phase;
+    counter: number;
+    totalAlivePlayers: number;
+    bossId: number;
+    discardedBullets: number;
+    lootDeck: Loot[];
+    lootDict: Record<number,Loot>;
+    lootPlayers: number[];
+    lootTurnPlayerIndex: number;
+    round: number;
 }
 
 export enum Phase {
@@ -49,7 +71,7 @@ export class Player {
     //target of a bullet
     public target = -1;
     public bulletChoice = -1;
-    public godfather = false;
+    // public godfather = false;
     public hiding = false;
     public choosingLoot = false;
     // public damaged = false;
@@ -59,6 +81,7 @@ export class Player {
     public gems = 0;
 
     public completedPhase = false;
+    public totalScore = 0;
 
 
     // public index: number = 0;

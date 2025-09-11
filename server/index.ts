@@ -3,7 +3,7 @@ import { createServer } from "http";
 import { Server, Socket } from "socket.io";
 import { instrument } from "@socket.io/admin-ui";
 import cors from "cors";
-import {ServerToClientEvents , ClientToServerEvents, Player, Phase, Loot, LootType} from "../shared";
+import {ServerToClientEvents , ClientToServerEvents, Player, GameState, Phase, Loot, LootType} from "../shared";
 const app = express()
 app.use(cors());
 const server = createServer(app)
@@ -35,17 +35,6 @@ const io = new Server<ClientToServerEvents,ServerToClientEvents>(server, {
 const roomCodeLength = 5;
 const maxPlayers = 8;
 
-interface GameState {
-    playerArray: Player[];
-    joinable: boolean;
-    phase: Phase;
-    counter: number;
-    totalAlivePlayers: number;
-    bossId: number;
-    discardedBullets: number;
-    lootDeck: Loot[];
-    lootDict: Record<number,Loot>;
-}
 
 function randomizeArray(array: any[]) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -95,7 +84,7 @@ function newGameState():GameState {
     let joinable = true;
     let phaseVal = Phase.LoadAndAim;
     const lootVals: Loot[] = createNewRandomizedLootDeck();
-    return {playerArray, joinable,phase: phaseVal,counter:0,totalAlivePlayers: 0, bossId: 0, discardedBullets: 0, lootDeck: lootVals,lootDict: {}};
+    return {playerArray, joinable,phase: phaseVal,counter:0,totalAlivePlayers: 0, bossId: 0, discardedBullets: 0, lootDeck: lootVals,lootDict: {},lootPlayers: [], lootTurnPlayerIndex: 0, round: 0};
 }
 
 function chooseGodfather(totalPlayers : number) {
@@ -132,12 +121,87 @@ function getLootDict(lootCards: Loot[]): Record<number,Loot> {
 }
 
 
-function setGodfatherIncomplete(playerArray: Player[]): void {
-    for (const player of playerArray) {
-        if (player.godfather) {
+function setGodfatherIncomplete(playerArray: Player[],room: string): void {
+    for (let i = 0; i < playerArray.length; i++) {
+        const player = playerArray[i]
+        if (i == games[room].bossId) {
             player.completedPhase = false;
         }
     }
+}
+
+function setInitialLooter(array: number[], godfather: number) {
+    if (array.includes(godfather)) {
+        return godfather;
+    }
+    else {
+        return findNextValue(array,godfather);
+    }
+}
+
+function findNextValue(array: number[], value: number ) {
+    let out = array[0];
+    for (const x of array) {
+        if (x > value) {
+            out = x;
+            break
+        }
+    }
+    return out;
+}
+
+function stashItemOnPlayer(player: Player,playerIndex: number, item: Loot, room: string): void {
+    player.money += item.value;
+    if (item.type == LootType.clip) {
+        // handle adding clip
+    }
+    else if (item.type == LootType.gem) {
+        player.gems++;
+    }
+    else if (item.type == LootType.nft) {
+        player.nft++;
+    }
+    else if (item.type == LootType.godfather) {
+        games[room].bossId = playerIndex;
+    } 
+    else if (item.type == LootType.medKit) {
+        player.health = 3;
+    }
+}
+
+function makeAllPlayersIncomplete(playerArray: Player[]): void {
+    for (const player of playerArray) {
+        player.completedPhase = false;
+    }
+}
+
+function totalNft(num: number) : number {
+    // let val : number;
+    switch (num) {
+        case (1): 
+            return 1000;
+        case (2):
+            return 4000;
+        case (3):
+            return 30000;
+        case (4):
+            return 60000;
+        case (5):
+            return 100000;
+        case (6):
+            return 150000;
+        case (7):
+            return 200000;
+        case (8):
+            return 300000;
+        case (9):
+            return 400000;
+        case (10):
+            return 500000;
+        default:
+            return 0;
+    }
+
 }
 
 const games : Record<string,GameState> = {};
@@ -198,12 +262,17 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
     socket.on("triggerStartGame",(room: string) => {
         games[room].joinable = false;
         games[room].totalAlivePlayers = games[room].playerArray.length;
-        games[room].playerArray[chooseGodfather(games[room].totalAlivePlayers)].godfather = true;
+        // games[room].playerArray[chooseGodfather(games[room].totalAlivePlayers)].godfather = true;
+        games[room].bossId = chooseGodfather(games[room].totalAlivePlayers);
         io.to(room).emit("startGame");
     })
 
-    socket.on("requestPlayersAndPhase",(room: string, changes: string[]) => {
-        socket.emit("sendPlayersAndPhase",games[room].playerArray,games[room].phase,changes);
+    socket.on("requestInitialState",(room: string) => {
+        socket.emit("getPlayerNames",games[room].playerArray);
+        socket.emit("getGameState",games[room]);
+        // socket.emit("sendPlayersAndPhase",games[room].playerArray,games[room].phase,["INIT"]);
+        // socket.emit("sendGodfatherIndex",games[room].bossId);
+        // socket.emit("sendLootPlayerTurn",games[room].lootTurnPlayerIndex);
     })
 
     socket.on("sendBulletAndTarget", (bullet: number, targetId: number, id: number, room: string) => {
@@ -224,19 +293,21 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
             // console.log(games[room].counter)
             // console.log(games[room].totalAlivePlayers)
             if (games[room].counter == games[room].totalAlivePlayers) {
-                console.log("HEYOOOOO")
                 games[room].counter = 0;
                 games[room].phase=Phase.GodfatherPriv;
+                // setAllUncompleted(games[room].playerArray);
                 // setAllUncompleted(playerArray);
-                setGodfatherIncomplete(playerArray);
-                io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["target","player"])
+                setGodfatherIncomplete(playerArray,room);
+                // io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["target","player"])
+                io.to(room).emit("getGameState",games[room]);
             }
         }
         else if (games[room].phase == Phase.GodfatherPriv) {
             playerArray[targetId].pendingHits += bullet;
             games[room].phase=Phase.Gambling;
             setAllUncompleted(playerArray);
-            io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["target","player"])
+            // io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["target","player"])
+            io.to(room).emit("getGameState",games[room]);
         }
     })
 
@@ -245,7 +316,8 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         playerArray[id].completedPhase = true;
         playerArray[target].completedPhase = false;
         playerArray[playerArray[target].target].pendingHits -= playerArray[target].bulletChoice;
-        io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["player"])
+        // io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["player"])
+        io.to(room).emit("getGameState",games[room]);
     })
 
     socket.on("sendHidingChoice",(id: number, choice: boolean, room:string) => {
@@ -256,33 +328,118 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         if (games[room].counter == games[room].totalAlivePlayers) {
             games[room].counter = 0;
             games[room].phase=Phase.Looting;
-            for (const player of playerArray) {
+            const looters: number[] = []
+            for (let i = 0; i<playerArray.length; i++){
+                const player = playerArray[i]
                 if (player.hiding) {
                     player.pendingHits = 0;
                 }
                 else {
                     player.health -= player.pendingHits;
+                    if (player.pendingHits == 0) {
+                        looters.push(i)
+                        player.completedPhase = false;
+                    }
                     if (player.health <= 0) {
                         player.dead = true;
                         games[room].totalAlivePlayers--;
-                    }
-                    else {
-                        player.completedPhase = false;
                     }
                 }
             }
             // setAllUncompleted(playerArray);
             const lootDict = getLootDict(games[room].lootDeck);
+            games[room].lootPlayers = looters;
             games[room].lootDict = lootDict;
-            io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["hiding","health","damaged"])
-            io.to(room).emit("sendLootDict", lootDict);
+            games[room].lootTurnPlayerIndex = setInitialLooter(looters,games[room].bossId);
+            if (looters.length == 0) {
+                games[room].phase = Phase.LoadAndAim;
+                setAllUncompleted(games[room].playerArray);
+                // io.to(room).emit("sendPlayersAndPhase",games[room].playerArray,games[room].phase,["INIT"])
+            }
+            io.to(room).emit("getGameState",games[room]);
         }
 
     })
 
+    //THIS NEEDS TO BE REMOVED
     socket.on("requestLootDict",(room: string) => {
         socket.emit("sendLootDict",games[room].lootDict);
     })
+
+    socket.on("addItemToPlayer",(itemIndex: number, playerIndex: number, room: string) => {
+        const player = games[room].playerArray[playerIndex];
+        const item = games[room].lootDict[itemIndex];
+        stashItemOnPlayer(player,playerIndex,item,room);
+        games[room].lootDict[itemIndex] = new Loot(LootType.empty);
+        games[room].counter++;
+        console.log(games[room].counter)
+        if (games[room].counter >= 9) {
+            games[room].counter = 0;
+            games[room].round++;
+            if (games[room].round >= 8) {
+                endGame(room);
+            }
+            else {
+                games[room].phase = Phase.LoadAndAim;
+                setAllUncompleted(games[room].playerArray);
+                // io.to(room).emit("sendPlayersAndPhase",games[room].playerArray,games[room].phase,["INIT"])
+                io.to(room).emit("getGameState",games[room]);
+            }
+        }
+        else {
+            games[room].lootTurnPlayerIndex = findNextValue(games[room].lootPlayers,playerIndex);
+            // io.to(room).emit("sendLootDict",games[room].lootDict);
+            // io.to(room).emit("sendLootPlayerTurn",games[room].lootTurnPlayerIndex);
+            io.to(room).emit("getGameState",games[room]);
+        }
+    })
+
+    function endGame(room: string) {
+        // const totalScores: number[]= [];
+        const playerArray = games[room].playerArray;
+        const alivePlayers : Player[]= []
+
+        for (const player of playerArray) {
+            if (!player.dead) {
+                alivePlayers.push(player)
+            }
+        }
+        
+        const gems = alivePlayers.map(player => player.gems);
+        const maxGems = Math.max(...gems);
+        let noGems = false;
+
+        gems.splice(gems.indexOf(maxGems),1);
+        if (gems.includes(maxGems)) noGems = true;
+
+        for (const player of alivePlayers) {
+            let val = player.money;
+            if (!noGems && player.gems == maxGems) {
+                val += 60000;
+            }
+            val += totalNft(player.nft);
+
+            player.totalScore = val;
+        }
+
+        const maxScore = Math.max(...alivePlayers.map(player => player.totalScore))
+
+        const winners : Player[] = [];
+        for (const player of alivePlayers) {
+            if (player.totalScore == maxScore) {
+                winners.push(player);
+            }
+        }
+
+        const minHealth = Math.min(...winners.map(player => player.health));
+
+        for (const player of winners) {
+            if (player.health == minHealth) {
+                // send victory screen to the client
+            }
+        }
+
+    }
     // console.log(socket.id)
     // socket.on("nameEntered",(name) => {
     //     if (playerArray.length>maxPlayers) {

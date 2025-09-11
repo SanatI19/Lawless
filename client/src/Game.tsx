@@ -2,7 +2,8 @@
 import { useContext, useEffect, useState} from "react";
 import { useNavigate, useLocation} from "react-router-dom";
 import { SocketContext } from "./App";
-import { Player , Phase, Loot, LootType} from "../../shared";
+import { GameState, Player , Phase, Loot, LootType} from "../../shared";
+import "./App.css";
 // const {state} = useLocation()
 
 
@@ -36,6 +37,10 @@ function Game() {
   const [hoverIndex,setHoverIndex] = useState(-1);
   const [hoverBullet,setHoverBullet] = useState(Boolean);
   const [hoverBlank,setHoverBlank] = useState(Boolean);
+  const [lootTurn,setLootTurn] = useState(false);
+  const [godfatherIndex,setGodfatherIndex] = useState<number>(0);
+  const [skipHover,setSkipHover] = useState<boolean>(false);
+  const [round,setRound] = useState<number>(0);
   // const [thisChoosingLoot]
   // const [targetIndex,setTargetIndex] = useState(-1);
   const {state} = useLocation()
@@ -178,6 +183,7 @@ function Game() {
   }
   // console.log(thisPlayer.bullets)
   console.log(playerHealth)
+
   function changeInit(playerArrayIn: Player[]): void {
     const names = playerArrayIn.map(player => player.name);
     const health = playerArrayIn.map(player => player.health);
@@ -187,12 +193,18 @@ function Game() {
     setPlayerHealth(health);
     const targets = playerArrayIn.map(player => player.target);
     setTargetArray(targets);
-    setAmmo(thisPlayer.bulletChoice)
+    // setAmmo(thisPlayer.bulletChoice)
 
     // setPlayerButtons(true);
     // console.log("This happened")
     // console.log(names)
   }
+
+  function itemTaken(index: number): void {
+    socket.emit("addItemToPlayer", index, thisId,room);
+    console.log("item got taken")
+  }
+
 
   function playerClicked(index: number): void {
     // console.log()
@@ -203,15 +215,20 @@ function Game() {
       socket.emit("sendBulletAndTarget",ammo,index,thisId,room);
     }
     else if (phase == Phase.GodfatherPriv) {
-      if (thisPlayer.godfather) {
+      if (thisId == godfatherIndex) {
         console.log("godfather decision sent")
-        socket.emit("sendGodfatherDecision",thisId, index,room);
+        socket.emit("sendGodfatherDecision",thisId,index,room);
       }
       else {
         socket.emit("sendBulletAndTarget",ammo,index,thisId,room);
       }
     }
   }
+
+  function skipGodFatherPriv() {
+    socket.emit("continueToGambling",room);
+  }
+  // const playerClickedHandlers = playerNames.map((_,index : number) => () => playerClicked(index))
 
   function hidingChosen(choice : boolean) : void {
     setCompletedPhase(true)
@@ -253,29 +270,70 @@ function Game() {
 //   const handleSubmit = (e:FormEvent) => {
 //     e.preventDefault();
     useEffect(() => {
-      socket.emit("requestPlayersAndPhase", room,["INIT"])
-      console.log("THIS OCCURRED")
+      socket.emit("requestInitialState", room)
+      // console.log("THIS OCCURRED")
     },[room])
 
     useEffect(() => {
-      if (phase == "LOADANDAIM") {
-        setBulletChoice(true);
-      }
-      if (phase === "GODFATHERPRIV") {
-        console.log(thisPlayer)
-        if (!completedPhase) {
-          setPlayerButtons(true);
-        }
-        else {
-          setPlayerButtons(false);
-        }
-      }
-      if (phase === "LOOTING") {
-        socket.emit("requestLootDict",room);
-      }
-    },[phase,completedPhase])
+      switch (phase) {
+        case "LOADANDAIM" : 
+          setBulletChoice(true);
+          break;
+        case "GODFATHERPRIV" :
+          if (!completedPhase) {
+            // setCompletedPhase(true);
+            setPlayerButtons(true);
+          }
+          else {
+            setPlayerButtons(false)
+          }
+          break;
+    }},[phase,completedPhase])
     
     console.log(thisPlayer)
+    console.log(targetArray)
+    console.log(completedPhase);
+
+    useEffect(() => {
+      const handleSendGodfatherIndex = (index: number) => {
+        setGodfatherIndex(index);
+      }
+      socket.on("sendGodfatherIndex",handleSendGodfatherIndex);
+
+      return () => {
+          socket.off("sendGodfatherIndex", handleSendGodfatherIndex);
+      }
+    })
+
+    useEffect(() => {
+      const handleSendLootTurnPlayer = (index: number) => {
+        if (thisId == index) {
+          setLootTurn(true);
+        }
+        else {
+          setLootTurn(false);
+        }
+      }
+
+      socket.on("sendLootPlayerTurn",handleSendLootTurnPlayer);
+
+      return () => {
+        socket.off("sendLootPlayerTurn", handleSendLootTurnPlayer);
+      }
+    })
+
+    useEffect(() => {
+        const handleSendLootDict = (lootDictIn: Record<number,Loot>) => {
+          // console.log(lootDictIn);
+          setLootDict(lootDictIn);
+        }
+
+        socket.on("sendLootDict",handleSendLootDict);
+
+        return () => {
+          socket.off("sendLootDict",handleSendLootDict);
+        }
+    })
 
     // console.log(completedPhase)
     // console.log(targetArray)
@@ -285,7 +343,7 @@ function Game() {
         // const handleSendNames = (playerArrayIn: Player[]) 
 
         const handleSendPlayersAndPhase = (playerArrayIn: Player[], phaseIn: Phase, changes: string[]) => {
-          console.log(phaseIn)
+          // console.log(phaseIn)
           setPhase(phaseIn);
           setThisPlayer(playerArrayIn[thisId]);
           setCompletedPhase(playerArrayIn[thisId].completedPhase);
@@ -318,7 +376,7 @@ function Game() {
         }
 
         const handleSendLootDict = (lootDictIn: Record<number,Loot>) => {
-          console.log(lootDictIn);
+          // console.log(lootDictIn);
           setLootDict(lootDictIn);
         }
 
@@ -327,38 +385,72 @@ function Game() {
 
         return () => {
             socket.off("sendPlayersAndPhase", handleSendPlayersAndPhase);
-            socket.on("sendLootDict",handleSendLootDict);
+            socket.off("sendLootDict",handleSendLootDict);
         }
     })
 
+
+    useEffect(() => {
+      const handleGetNames = (playerArray: Player[]) => {
+        setPlayerNames(playerArray.map(player => player.name));
+      }
+
+      const handleGetGameState = (gameState: GameState)  => {
+        setGodfatherIndex(gameState.bossId);
+        setLootDict(gameState.lootDict);
+        setLootTurn(gameState.lootTurnPlayerIndex === thisId);
+        setRound(gameState.round);
+        const playerArray = gameState.playerArray;
+        const thisPlayer = playerArray[thisId];
+        setPlayerHealth(playerArray.map(player => player.health));
+        setThisPlayer(thisPlayer);
+        setAmmo(thisPlayer.bulletChoice);
+        setCompletedPhase(thisPlayer.completedPhase);
+        setHidingArray(playerArray.map(player => player.hiding));
+        setDamagedArray(playerArray.map(player => player.pendingHits > 0))
+        setTargetArray(playerArray.map(player => player.target));
+
+        setPhase(gameState.phase);
+      }
+
+      socket.on("getPlayerNames",handleGetNames)
+      socket.on("getGameState",handleGetGameState);
+
+      return () => {
+        socket.off("getPlayerNames",handleGetNames)
+        socket.off("getGameState",handleGetGameState);
+      }
+    },[])
+
   return <svg id="main" x = "20px" y="20px" xmlns = "http://www.w3.org/2000/svg" viewBox="0 0 100 50">
       <g>
+          <text x="0" y="2" fontSize="3">Round {round+1}</text>
           {playerNames.map((name: string, index: number) => 
-          <g key={index} onClick={((playerButtons) && (index!== thisId) && !(!thisPlayer.godfather && (index === targetArray[thisId]))) ? (
+          <g key={index} onClick={((playerButtons) && (index!== thisId) && !((thisId !== godfatherIndex) && (index === targetArray[thisId]))) ? (
             () => {
               playerClicked(index);
               setPlayerButtons(false);
               setHoverIndex(-1);
             }
-          ): doNothing} onMouseEnter={((playerButtons) && (index!== thisId)  && !(!thisPlayer.godfather && (index === targetArray[thisId]))) ? (
+          ): doNothing} onMouseEnter={((playerButtons) && (index!== thisId)  && !((thisId !== godfatherIndex) && (index === targetArray[thisId]))) ? (
             () => setHoverIndex(index)
           ): doNothing} onMouseLeave={((playerButtons) && (index!== thisId)) ? (
             () => setHoverIndex(-1)
           ): doNothing}>
             <circle cx={getX(index)+5} cy={getY(index)} r="5" fill={getColor(playerHealth[index])} stroke={(hoverIndex === index) ? "yellow": "black"} strokeWidth={(hoverIndex === index) ? "0.3":"0.1"}></circle>
-            <text x={getX(index)+2.5} y={getY(index)} fontSize="2">{name}</text>
+            <text className="text" x={getX(index)+2.5} y={getY(index)} fontSize="2">{name}</text>
             {(index === thisId) ? (
               <g>
               <rect x={getInnerX(index)} y={getInnerY(index)} width="10" height="3" fill="white" stroke="black" strokeWidth="0.1"></rect>
-              <text x={getInnerX(index)+1} y={getInnerY(index)+0.75} fontSize="1">Money: {thisPlayer.money}</text>
-              <text x={getInnerX(index)+1} y={getInnerY(index)+1.5} fontSize="1">Gems: {thisPlayer.gems}</text>
-              <text x={getInnerX(index)+1} y={getInnerY(index)+2.25} fontSize="1">NFTs: {thisPlayer.nft}</text>
+              <text className="text" x={getInnerX(index)+1} y={getInnerY(index)+0.75} fontSize="1">Money: {thisPlayer.money}</text>
+              <text className="text" x={getInnerX(index)+1} y={getInnerY(index)+1.5} fontSize="1">Gems: {thisPlayer.gems}</text>
+              <text className="text" x={getInnerX(index)+1} y={getInnerY(index)+2.25} fontSize="1">NFTs: {thisPlayer.nft}</text>
               </g>
             ) : null}
           </g>
           )}
         {(completedPhase) ? (
-          <text x="40" y="24" fontSize="2">Waiting for other players...</text>
+          <text className="text" x="40" y="24" fontSize="2">Waiting for other players...</text>
         ) : (null)}
       </g>
       <g>
@@ -366,36 +458,55 @@ function Game() {
             switch (phase) {
               case "LOADANDAIM":
                 return <g>
+                  {((!bulletChoice) && (!completedPhase)) ? (
+                    <text className="text" x="38" y="18" fontSize="3">Choose a target</text>
+                  ): null}
                   {((bulletChoice) && (!completedPhase)) ? (
                     <>
+                    <text className="text" x="30" y="18" fontSize="3">Choose what to load in your gun this round</text>
                     {thisPlayer.bullets > 0 && (
                       <g id="bullet" onClick={() => {
                         setBulletChoice(false);
+                        setHoverBullet(false);
                         setPlayerButtons(true);
                         setAmmo(1)
                         
                       }} onMouseEnter={() => setHoverBullet(true)} 
                           onMouseLeave={() => setHoverBullet(false)}>
                         <rect x="40" y="20" width="5" height="10" fill="grey" stroke={hoverBullet ? ("yellow") : ("black")} strokeWidth={hoverBullet ? ("0.2") : ("0.1")}></rect>
-                        <text x="41" y="25" fontSize="1">Bullet</text>
+                        <text className="text" x="41" y="25" fontSize="1">Bullet</text>
                       </g>)}
                       {thisPlayer.blanks > 0 && (
                       <g id="blank" onClick={() => {
                         setBulletChoice(false);
+                        setHoverBlank(false);
                         setPlayerButtons(true);
                         setAmmo(0);
                       }} onMouseEnter={() => setHoverBlank(true)} 
                         onMouseLeave={() => setHoverBlank(false)}>
                         <rect x="60" y="20" width="5" height="10" fill="grey" stroke={hoverBlank ? ("yellow") : ("black")} strokeWidth={hoverBlank ? ("0.2") : ("0.1")}></rect>
-                        <text x="61" y="25" fontSize="1">Blank</text>
+                        <text className="text" x="61" y="25" fontSize="1">Blank</text>
                       </g>)}
                     </>) : null}
+                    
                   </g>;
               case "GODFATHERPRIV":
                 return <g>
+                    {((thisId === godfatherIndex) && playerButtons) ? (
+                      <text className="text" x="30" y="18" fontSize="3">Choose a player to change their target, or skip</text>
+                    ): null}
+                    {((thisId !== godfatherIndex) && playerButtons) ? (
+                      <text className="text" x="30" y="18" fontSize="3">Choose a different player to target</text>
+                    ): null}
                     {targetArray.map((target:number,index:number) => 
                       <line key={index} x1={getX(index)} x2={getX(index) + (getX(target)-getX(index))*0.2} y1={getY(index)} y2={getY(index) + (getY(target)-getY(index))*0.2} stroke="black" strokeWidth="0.75"></line>
                     )}
+                    {((thisId === godfatherIndex) && (playerButtons)) ? (
+                      <g onClick={skipGodFatherPriv} onMouseEnter={() => {setSkipHover(true)}} onMouseLeave={() => {setSkipHover(false)}}>
+                        <rect x="48" y="25" height="2" width="6" fill="white" stroke="black" strokeWidth={skipHover ? "0.3" : "0.1"} onClick={skipGodFatherPriv}>Skip</rect>
+                        <text className="text" x="49" y="26.5" fontSize="2">Skip</text>
+                      </g>
+                    ): null}
                   </g>;
               case "GAMBLING":
                 return <g>
@@ -406,36 +517,37 @@ function Game() {
                       <g id="choices">
                       <g id="stay" onClick={() => {
                         hidingChosen(false);
+                        setHoverBullet(false);
                         
                       }} onMouseEnter={() => setHoverBullet(true)} 
                           onMouseLeave={() => setHoverBullet(false)}>
                         <rect x="40" y="20" width="5" height="10" fill="grey" stroke={hoverBullet ? ("yellow") : ("black")} strokeWidth={hoverBullet ? ("0.2") : ("0.1")}></rect>
-                        <text x="41" y="25" fontSize="1">Stay</text>
+                        <text className="text" x="41" y="25" fontSize="1">Stay</text>
                       </g>
                       <g id="hide" onClick={() => {
                         hidingChosen(true);
+                        setHoverBlank(false);
                       }} onMouseEnter={() => setHoverBlank(true)} 
                         onMouseLeave={() => setHoverBlank(false)}>
                         <rect x="60" y="20" width="5" height="10" fill="grey" stroke={hoverBlank ? ("yellow") : ("black")} strokeWidth={hoverBlank ? ("0.2") : ("0.1")}></rect>
-                        <text x="61" y="25" fontSize="1">Hide</text>
+                        <text className="text" x="61" y="25" fontSize="1">Hide</text>
                       </g>
                       </g>) : null}
                   </g>;
-              case "SHOOTING":
-                return <text fill="red">Dead</text>;
               case "LOOTING": // need to add the animations and shiet for the shooting
                 return <g>
                   {Object.values(lootDict).map((value: Loot, index: number) => 
                     value.type !== LootType.empty ? (
-                      <g key={index}>
+                      <g key={index} onClick={lootTurn ? (() => {
+                        itemTaken(index);
+                        setLootTurn(false);
+                        }) : doNothing} stroke={lootTurn ? ("green") : "none"} strokeWidth="0.1">
                         <image href={getImage(value.type)} height="7" width="7" x={getLootX(index)} y={getLootY(index)}/>
-                        <text x={getLootX(index)+0.5} y={getLootY(index)+2} fontSize="2">{value.value > 0 ? ("$"+value.value) : ""}</text>
+                        <text className="text" x={getLootX(index)+0.5} y={getLootY(index)+2} fontSize="2">{value.value > 0 ? ("$"+value.value) : ""}</text>
                       </g>) : null
                   )}
                   
                 </g>;
-              case "ROUNDEND":
-                return <text fill="red">Dead</text>;
             }
           })()}
       </g>
