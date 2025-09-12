@@ -11,13 +11,14 @@ export interface ServerToClientEvents {
     sendLootPlayerTurn: (index: number) => void;
     getGameState: (gameState: GameState) => void;
     getPlayerNames: (playerArray: Player[]) => void;
+    getPlayerIndex: (index: number) => void;
     // list all of the server to client events here (so easy goddamn)
 }
 
 export interface ClientToServerEvents {
     clientMsg: (data : {msg : string; room: string}) => void;
-    createRoom: () => void;
-    joinRoom: (room: string) => void;
+    createRoom: (playerId: string) => void;
+    joinRoom: (room: string, playerId: string) => void;
     requestPlayerArray: (room: string) => void;
     sendName: (name: string, id: number, room: string) => void;
     triggerStartGame: (room: string) => void;
@@ -28,6 +29,8 @@ export interface ClientToServerEvents {
     requestLootDict: (room: string) => void;
     addItemToPlayer: (itemIndex: number, playerIndex: number, room:string) => void;
     continueToGambling: (room: string) => void;
+    joinPlayerArray: (room:string, playerId: string) => void;
+    socketDisconnected: (id: number, room: string) => void;
     // list all of the client to server events here 
 }
 
@@ -59,9 +62,11 @@ export enum Phase {
 
 export class Player {
     // Need to add more
-    public static id : number = 0;
+    public id : number = 0;
+
+    public internalId: string;
     // public playerId : number = 0;
-    public name: string;
+    public name: string = "";
     public connected: boolean;
     public blanks = 5;
     public bullets = 3;
@@ -86,8 +91,9 @@ export class Player {
 
     // public index: number = 0;
 
-    public constructor(name: string) {
+    public constructor(name: string, idIn: string) {
         this.name = name;
+        this.internalId = idIn;
         this.connected=true;
     }
 }

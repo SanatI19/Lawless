@@ -20,18 +20,22 @@ function PreLobby() {
   const navigate = useNavigate();
   const [room, setRoom] = useState("");
   const [err, setErr] = useState("");
+  let playerId: string;
 
 
 
   const joinRoom = () => {
-    socket.emit("joinRoom",room);
+    socket.emit("joinRoom",room,playerId);
     setRoom("");
   }
 
   const createRoom = () => {
-    socket.emit("createRoom")
+    socket.emit("createRoom",playerId)
   }
   useEffect(() => {
+    playerId = crypto.randomUUID();
+    sessionStorage.setItem("playerUUID", playerId);
+
     const handleEnterExistingRoom = (roomId:string) => {
         console.log(roomId)
         if (roomId == "") {
@@ -54,7 +58,7 @@ function PreLobby() {
 
       socket.off("unableToCreateRoom", handleUnableToCreateRoom);
     }
-  })
+  },[])
 
 //   useSocket("enterExistingRoom",(roomId) => {
 //     console.log(roomId)

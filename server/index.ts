@@ -79,8 +79,8 @@ function createNewRandomizedLootDeck(): Loot[] {
 }
 
 
-function newGameState():GameState {
-    const playerArray : Player[] = [new Player("Player1")]
+function newGameState(playerId: string):GameState {
+    const playerArray : Player[] = []
     let joinable = true;
     let phaseVal = Phase.LoadAndAim;
     const lootVals: Loot[] = createNewRandomizedLootDeck();
@@ -212,15 +212,15 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         io.sockets.emit("serverMsg",data);
     })
 
-    socket.on("joinRoom",(room: string) => {
+    socket.on("joinRoom",(room: string, playerId: string) => {
         let outRoom = ""
         if (games[room] !== undefined && games[room].joinable) {
             // do some putting of the players in the array
             socket.join(room);
-            const playerArray = games[room].playerArray;
-            const index = playerArray.length;
-            const string = "Player" + (index+1);
-            playerArray.push(new Player(string))
+            // const playerArray = games[room].playerArray;
+            // const index = playerArray.length;
+            // const string = "Player" + (index+1);
+            // playerArray.push(new Player(string, playerId))
             // playerArray[index].playerId = index;
             outRoom = room;
         }
@@ -228,7 +228,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
 
     })
 
-    socket.on("createRoom",() => {
+    socket.on("createRoom",(playerId: string) => {
         let ableToCreateRoom = false;
         let roomId: string = "";
         for (let i = 0; i < 10000; i++) {
@@ -241,7 +241,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
 
         if (ableToCreateRoom) {
             socket.join(roomId);
-            games[roomId] = newGameState();
+            games[roomId] = newGameState(playerId);
             if (games)
             socket.emit("enterExistingRoom",roomId);
         }
@@ -254,9 +254,33 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         socket.emit("sendPlayerArray",games[room].playerArray)
     })
 
+    socket.on("joinPlayerArray",(room: string, playerId: string) => {
+        // console.log(games[room])
+        // console.log(socket.rooms.has(room))
+        socket.join(room)
+        const playerArray = games[room].playerArray;
+        const playerIds = playerArray.map(player => player.internalId);
+        console.log(playerIds)
+        let index = 0;
+        if (playerIds.includes(playerId)) {
+            index = playerIds.indexOf(playerId)
+            socket.emit("getPlayerIndex",index);
+            socket.emit("sendPlayerArray",playerArray);
+        }
+        else {
+            index = playerArray.length;
+            const name = "Player" + (index+1);
+            playerArray.push(new Player(name,playerId))
+            playerArray[index].id = index-1;
+            socket.emit("getPlayerIndex",index);
+            io.to(room).emit("sendPlayerArray",playerArray);
+        }
+    })
+
+
     socket.on("sendName",(name: string, id: number, room: string) => {
         games[room].playerArray[id].name = name;
-        socket.broadcast.to(room).emit("sendPlayerArray",games[room].playerArray);
+        io.to(room).emit("sendPlayerArray",games[room].playerArray);
     })
 
     socket.on("triggerStartGame",(room: string) => {
@@ -268,6 +292,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
     })
 
     socket.on("requestInitialState",(room: string) => {
+        socket.join(room)
         socket.emit("getPlayerNames",games[room].playerArray);
         socket.emit("getGameState",games[room]);
         // socket.emit("sendPlayersAndPhase",games[room].playerArray,games[room].phase,["INIT"]);
@@ -394,6 +419,10 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         }
     })
 
+    socket.on("socketDisconnected",(id:number, room: string) => {
+        games[room].playerArray[id].connected = false;
+    })
+
     function endGame(room: string) {
         // const totalScores: number[]= [];
         const playerArray = games[room].playerArray;
@@ -440,6 +469,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         }
 
     }
+
     // console.log(socket.id)
     // socket.on("nameEntered",(name) => {
     //     if (playerArray.length>maxPlayers) {

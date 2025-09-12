@@ -46,7 +46,8 @@ function Game() {
   const {state} = useLocation()
   const room = state.room;
   const thisId = state.id;
-  const [thisPlayer,setThisPlayer] = useState<Player>(new Player("player"))
+  // before i get to the end, need to change the above so it is dependent on the localStorage instead
+  const [thisPlayer,setThisPlayer] = useState<Player>(new Player("",""))
 
 
   const sendName = (name: string, id: number)  => {
@@ -289,6 +290,10 @@ function Game() {
           }
           break;
     }},[phase,completedPhase])
+
+    useEffect(() => {
+      // socket.on()
+    })
     
     console.log(thisPlayer)
     console.log(targetArray)
@@ -380,6 +385,8 @@ function Game() {
           setLootDict(lootDictIn);
         }
 
+
+
         socket.on("sendPlayersAndPhase", handleSendPlayersAndPhase);
         socket.on("sendLootDict",handleSendLootDict);
 
@@ -413,8 +420,12 @@ function Game() {
         setPhase(gameState.phase);
       }
 
+      const handleSocketDisconnect = (reason: string ) => {
+        socket.emit("socketDisconnected",thisId,room)
+      }
       socket.on("getPlayerNames",handleGetNames)
       socket.on("getGameState",handleGetGameState);
+      socket.on("disconnect",handleSocketDisconnect);
 
       return () => {
         socket.off("getPlayerNames",handleGetNames)
