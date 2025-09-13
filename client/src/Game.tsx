@@ -220,7 +220,7 @@ function Game() {
     console.log("item got taken")
   }
 
-
+  console.log(thisId)
   function playerClicked(index: number): void {
     // console.log()
     // const index = targetIndex;
@@ -303,7 +303,9 @@ function Game() {
           else {
             setPlayerButtons(false)
           }
-          break;
+          break
+        default:
+          setPlayerButtons(false)
     }},[phase,completedPhase])
 
     // useEffect(() => {
@@ -414,6 +416,7 @@ function Game() {
     // for (let i = 0; i < thisPlayer.bullets; i++) {
 
     // }
+    console.log(phase)
     const guns = useMemo(() => {
       return targetArray.map((target:number,index:number) => (
         <g key={index}>

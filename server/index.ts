@@ -165,7 +165,7 @@ function findNextValueInit(array: number[], value: number) {
 function findNextValue(array: number[], value: number ) {
     let out = array[0];
     const index = array.indexOf(value);
-    if (index + 1 < array.length) out = array[index];
+    if (index + 1 < array.length) out = array[index+1];
     // let next = false;
     // for (const x of array) {
     //     if (x == value) {
@@ -201,43 +201,45 @@ function makeAllPlayersIncomplete(playerArray: Player[]): void {
     }
 }
 
-const lootOrder = [0,7,5,3,1,6,4,2]
+// const lootOrder = [0,7,5,3,1,6,4,2]
+const lootOrder = [0,2,4,6,1,3,5,7]
 
-function mapIndices(num : number) : number {
-    let out = 0;
-    if (num == 7) {
-        out = 1;
-    }
-    else if (num == 5) {
-        out = 2;
-    }
-    else if (num == 3) {
-        out = 3;
-    }
-    else if (num == 1) {
-        out = 4;
-    }
-    else if (num == 6) {
-        out = 5;
-    }
-    else if (num == 4) {
-        out = 6;
-    }
-    else if (num == 2) {
-        out = 7;
-    }
-    return out
-}
+// function mapIndices(num : number) : number {
+//     let out = 0;
+//     if (num == 7) {
+//         out = 1;
+//     }
+//     else if (num == 5) {
+//         out = 2;
+//     }
+//     else if (num == 3) {
+//         out = 3;
+//     }
+//     else if (num == 1) {
+//         out = 4;
+//     }
+//     else if (num == 6) {
+//         out = 5;
+//     }
+//     else if (num == 4) {
+//         out = 6;
+//     }
+//     else if (num == 2) {
+//         out = 7;
+//     }
+//     return out
+// }
 function orderLooters(looters: number[]): number[] {
     const out : number[] = []
     for (const val of looters) {
-        out[mapIndices(val)] = val;
+        out[lootOrder.indexOf(val)] = val;
     }
     
     const realOut =  out.filter((val): val is number => val != null)
     return realOut
 
 }
+
 
 function totalNft(num: number) : number {
     // let val : number;
@@ -317,6 +319,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
     socket.on("requestPlayerArray",(room: string) => {
         socket.emit("sendPlayerArray",games[room].playerArray)
     })
+
 
     socket.on("joinPlayerArray",(room: string, playerId: string) => {
         // console.log(games[room])
@@ -415,6 +418,8 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
 
     socket.on("continueToGambling", (room: string) => {
         games[room].phase = Phase.Gambling;
+        setAllUncompleted(games[room].playerArray)
+        games[room].playerArray[games[room].bossId]; // UPDATE
         io.to(room).emit("getGameState",games[room]);
     })
 
@@ -487,6 +492,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         }
         else {
             games[room].lootTurnPlayerIndex = findNextValue(games[room].lootPlayers,playerIndex);
+            console.log(games[room].lootTurnPlayerIndex)
             // io.to(room).emit("sendLootDict",games[room].lootDict);
             // io.to(room).emit("sendLootPlayerTurn",games[room].lootTurnPlayerIndex);
             io.to(room).emit("getGameState",games[room]);
