@@ -84,7 +84,7 @@ function PreGame() {
       <div>
         {playerArray.map((player: Player, id: number) =>
             id === thisId ? ( 
-          <input key={id} type="text" placeholder="Player name" value={name} onChange={(e) => sendName(e.target.value,thisId)}/>  
+          <input key={id} type="text" maxLength={10} placeholder="Player name" value={name} onChange={(e) => sendName(e.target.value,thisId)}/>  
         ) : (
             <p key={id}>{player.name}</p>
         )

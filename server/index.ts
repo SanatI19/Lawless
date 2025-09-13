@@ -135,18 +135,44 @@ function setInitialLooter(array: number[], godfather: number) {
         return godfather;
     }
     else {
-        return findNextValue(array,godfather);
+        return findNextValueInit(array,godfather);
     }
+}
+
+function findNextValueInit(array: number[], value: number) {
+    let next = false;
+    let val = -1
+    let firstIncluded = -1;
+    for (const x of lootOrder) {
+        if (next && array.includes(x)) {
+            return x
+            // break;
+        }
+        else {
+            if (array.includes(x)) {
+                if (firstIncluded == -1) {
+                    firstIncluded = x;
+                }
+            }
+            if (x == value) {
+                next = true;
+            }
+        }
+    }
+    return firstIncluded;
 }
 
 function findNextValue(array: number[], value: number ) {
     let out = array[0];
-    for (const x of array) {
-        if (x > value) {
-            out = x;
-            break
-        }
-    }
+    const index = array.indexOf(value);
+    if (index + 1 < array.length) out = array[index];
+    // let next = false;
+    // for (const x of array) {
+    //     if (x == value) {
+    //         next = true;
+    //         // continu
+    //     }
+    // }
     return out;
 }
 
@@ -173,6 +199,44 @@ function makeAllPlayersIncomplete(playerArray: Player[]): void {
     for (const player of playerArray) {
         player.completedPhase = false;
     }
+}
+
+const lootOrder = [0,7,5,3,1,6,4,2]
+
+function mapIndices(num : number) : number {
+    let out = 0;
+    if (num == 7) {
+        out = 1;
+    }
+    else if (num == 5) {
+        out = 2;
+    }
+    else if (num == 3) {
+        out = 3;
+    }
+    else if (num == 1) {
+        out = 4;
+    }
+    else if (num == 6) {
+        out = 5;
+    }
+    else if (num == 4) {
+        out = 6;
+    }
+    else if (num == 2) {
+        out = 7;
+    }
+    return out
+}
+function orderLooters(looters: number[]): number[] {
+    const out : number[] = []
+    for (const val of looters) {
+        out[mapIndices(val)] = val;
+    }
+    
+    const realOut =  out.filter((val): val is number => val != null)
+    return realOut
+
 }
 
 function totalNft(num: number) : number {
@@ -260,7 +324,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         socket.join(room)
         const playerArray = games[room].playerArray;
         const playerIds = playerArray.map(player => player.internalId);
-        console.log(playerIds)
+        // console.log(playerIds)
         let index = 0;
         if (playerIds.includes(playerId)) {
             index = playerIds.indexOf(playerId)
@@ -274,6 +338,10 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
             playerArray[index].id = index-1;
             socket.emit("getPlayerIndex",index);
             io.to(room).emit("sendPlayerArray",playerArray);
+        }
+        if (playerArray.length == 8) {
+            games[room].joinable = false;
+            // need to add something to fix potential race condition
         }
     })
 
@@ -345,6 +413,11 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         io.to(room).emit("getGameState",games[room]);
     })
 
+    socket.on("continueToGambling", (room: string) => {
+        games[room].phase = Phase.Gambling;
+        io.to(room).emit("getGameState",games[room]);
+    })
+
     socket.on("sendHidingChoice",(id: number, choice: boolean, room:string) => {
         const playerArray = games[room].playerArray;
         playerArray[id].completedPhase = true;
@@ -373,7 +446,8 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
             }
             // setAllUncompleted(playerArray);
             const lootDict = getLootDict(games[room].lootDeck);
-            games[room].lootPlayers = looters;
+            const organizedLooters = orderLooters(looters);
+            games[room].lootPlayers = organizedLooters;
             games[room].lootDict = lootDict;
             games[room].lootTurnPlayerIndex = setInitialLooter(looters,games[room].bossId);
             if (looters.length == 0) {

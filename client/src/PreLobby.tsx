@@ -30,6 +30,7 @@ function PreLobby() {
   }
 
   const createRoom = () => {
+    console.log("Creating room")
     socket.emit("createRoom",playerId)
   }
   useEffect(() => {
