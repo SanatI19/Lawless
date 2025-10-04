@@ -22,6 +22,7 @@ function PreGame() {
   const [playerArray, setPlayerArray] = useState<Player[]>([]);
   const [length,setLength] = useState(Number);
   const [name,setName] = useState<string>("");
+  const [nameChange, setNameChange] = useState<boolean>(false);
   const {state} = useLocation()
   const room = state.room;
   console.log(room)
@@ -34,6 +35,17 @@ function PreGame() {
   
   const triggerStartGame = () => {
     socket.emit("triggerStartGame",room)
+  }
+
+  const changeTheName = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+    setNameChange(true);
+  }
+
+  const changeName = (name: string) => {
+    setName(name)
+    setNameChange(false);
+    socket.emit("sendName", name, thisId,room);
   }
 //   setRoom(state.room)
 
@@ -82,13 +94,13 @@ function PreGame() {
   return <div>
       <h1>Room {room}</h1>
       <div>
+        <input id="nameInput" autoComplete="off" type="text" maxLength={10} placeholder="Player name" value={name} onChange={(e) => 
+          changeTheName(e)}/>  
+        <button disabled={!nameChange} onClick={() => changeName(name)}>Change name</button>
         {playerArray.map((player: Player, id: number) =>
-            id === thisId ? ( 
-          <input key={id} type="text" maxLength={10} placeholder="Player name" value={name} onChange={(e) => sendName(e.target.value,thisId)}/>  
-        ) : (
-            <p key={id}>{player.name}</p>
+            <p key={id} style={{fontWeight: id==thisId ?  "bold" : "none"}}>{player.name}</p>
         )
-        )}
+      }
       </div>
       <br/>
       {thisId === 0 ? (<button disabled={length < 3} onClick={triggerStartGame}>Start Game</button>) : null}

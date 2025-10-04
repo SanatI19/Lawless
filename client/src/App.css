@@ -10,6 +10,31 @@
   cursor: default;
 }
 
+.pulse {
+  animation: pulse 1.5s infinite;
+  transform-origin: center;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.silhouette {
+        /* filter: `brightness(0) saturate(100%)`,
+        // optional: change silhouette color
+        WebkitMaskImage: `url(/my-image.png)`,
+        WebkitMaskRepeat: "no-repeat",
+        WebkitMaskSize: "contain",
+        backgroundColor: color, */
+      filter: brightness(0) saturate(100%) invert(0) sepia(1) saturate(10000%) hue-rotate(0deg);
+}
+
+.lootGlow {
+  filter: "drop-shadow(0 0 1px green)";
+}
+
 /* .centertext {
   y: "20";
 } */

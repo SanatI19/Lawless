@@ -12,6 +12,7 @@ export interface ServerToClientEvents {
     getGameState: (gameState: GameState) => void;
     getPlayerNames: (playerArray: Player[]) => void;
     getPlayerIndex: (index: number) => void;
+    animateItem: (itemIndex: number, playerIndex: number) => void;
     // list all of the server to client events here (so easy goddamn)
 }
 
@@ -23,6 +24,7 @@ export interface ClientToServerEvents {
     sendName: (name: string, id: number, room: string) => void;
     triggerStartGame: (room: string) => void;
     requestInitialState: (room: string) => void;
+    requestGameState: (room: string) => void;
     sendBulletAndTarget: (bullet: number, targetId: number, id: number, room: string) => void;
     sendGodfatherDecision: (id: number, target: number, room: string) => void;
     sendHidingChoice: (id: number, choice: boolean, room : string) => void;
@@ -31,6 +33,8 @@ export interface ClientToServerEvents {
     continueToGambling: (room: string) => void;
     joinPlayerArray: (room:string, playerId: string) => void;
     socketDisconnected: (id: number, room: string) => void;
+    itemAnimationComplete: (itemIndex: number, playerIndex: number, room: string) => void;
+    shotsFiredComplete: (room: string) => void;
     // list all of the client to server events here 
 }
 
@@ -48,6 +52,8 @@ export interface GameState {
     lootPlayers: number[];
     lootTurnPlayerIndex: number;
     round: number;
+    shooting: boolean;
+    winners: Player[];
 }
 
 export enum Phase {
@@ -57,7 +63,8 @@ export enum Phase {
     Gambling="GAMBLING",
     Shooting="SHOOTING",
     Looting="LOOTING",
-    RoundEnd="ROUNDEND"
+    // RoundEnd="ROUNDEND"
+    GameOver="GAMEOVER",
 }
 
 export class Player {
@@ -79,6 +86,7 @@ export class Player {
     // public godfather = false;
     public hiding = false;
     public choosingLoot = false;
+    public damaged = false;
     // public damaged = false;
     // loot things
     public money = 0;
