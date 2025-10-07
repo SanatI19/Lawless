@@ -11,7 +11,7 @@ import { Player } from "../../shared";
 // socket.on("connect", () => {
 //   console.log(`Client ${socket.id}`)
 // })
-let count = 0;
+// let count = 0;
 let thisId: number;
 
 function PreGame() {
@@ -28,10 +28,10 @@ function PreGame() {
   console.log(room)
   let playerId;
 
-  const sendName = (name: string, id: number)  => {
-    setName(name)
-    socket.emit("sendName",name,id,room);
-  }
+  // const sendName = (name: string, id: number)  => {
+  //   setName(name)
+  //   socket.emit("sendName",name,id,room);
+  // }
   
   const triggerStartGame = () => {
     socket.emit("triggerStartGame",room)

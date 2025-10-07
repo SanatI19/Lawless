@@ -4,8 +4,24 @@ import { Server, Socket } from "socket.io";
 import { instrument } from "@socket.io/admin-ui";
 import cors from "cors";
 import {ServerToClientEvents , ClientToServerEvents, Player, GameState, Phase, Loot, LootType} from "../shared";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Needed if you’re using ES modules instead of CommonJS
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express()
 app.use(cors());
+
+app.use(express.static(path.join(__dirname, "../client/dist"))); 
+// ^ adjust "dist" → "build" if that's what your React build generates
+
+// 🔹 Catch-all route to serve index.html (so React Router works)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../client/dist/index.html"));
+});
+
 const server = createServer(app)
 const io = new Server<ClientToServerEvents,ServerToClientEvents>(server, {
     cors: {
@@ -16,6 +32,10 @@ const io = new Server<ClientToServerEvents,ServerToClientEvents>(server, {
 
 });
 
+
+server.listen(process.env.PORT || 3000, () => {
+  console.log("Server listening on port " + (process.env.PORT || 3000));
+});
 
 //socket.on is listener
 //socket.emit("name", data(stuff that is sent))
@@ -48,31 +68,31 @@ function createNewRandomizedLootDeck(): Loot[] {
     const lootCards: Loot[] = [];
     for (let i = 0; i < 64; i++) {
         if (i < 15) {
-            lootCards.push(new Loot(LootType.cash,5000));
+            lootCards.push(new Loot("cash",5000));
         }
         else if (i < 30) {
-            lootCards.push(new Loot(LootType.cash,10000));
+            lootCards.push(new Loot("cash",10000));
         }
         else if (i < 40) {
-            lootCards.push(new Loot(LootType.cash,10000));
+            lootCards.push(new Loot("cash",10000));
         }
         else if (i < 50) {
-            lootCards.push(new Loot(LootType.nft));
+            lootCards.push(new Loot("nft"));
         }
         else if (i < 55) {
-            lootCards.push(new Loot(LootType.gem,1000));
+            lootCards.push(new Loot("gem",1000));
         }
         else if (i < 58) {
-            lootCards.push(new Loot(LootType.gem,5000));
+            lootCards.push(new Loot("gem",5000));
         }
         else if (i < 59) {
-            lootCards.push(new Loot(LootType.gem,10000));
+            lootCards.push(new Loot("gem",10000));
         }
         else if (i < 62) {
-            lootCards.push(new Loot(LootType.clip));
+            lootCards.push(new Loot("clip"));
         }
         else {
-            lootCards.push(new Loot(LootType.medKit));
+            lootCards.push(new Loot("medkit"));
         }
     }
     return randomizeArray(lootCards);
@@ -82,9 +102,9 @@ function createNewRandomizedLootDeck(): Loot[] {
 function newGameState(playerId: string):GameState {
     const playerArray : Player[] = []
     let joinable = true;
-    let phaseVal = Phase.LoadAndAim;
+    // let phaseVal = "LOADANDAIM";
     const lootVals: Loot[] = createNewRandomizedLootDeck();
-    return {playerArray, joinable,phase: phaseVal,counter:0,totalAlivePlayers: 0, bossId: 0, discardedBullets: 0, lootDeck: lootVals,lootDict: {},lootPlayers: [], lootTurnPlayerIndex: 0, round: 0, shooting: false, winners: []};
+    return {playerArray, joinable, phase: "LOADANDAIM",counter:0,totalAlivePlayers: 0, bossId: 0, discardedBullets: 0, lootDeck: lootVals,lootDict: {},lootPlayers: [], lootTurnPlayerIndex: 0, round: 0, shooting: false, winners: []};
 }
 
 function chooseGodfather(totalPlayers : number) {
@@ -110,7 +130,7 @@ function setAllUncompleted(playerArray: Player[]): void {
 
 function getLootDict(lootCards: Loot[]): Record<number,Loot> {
     const lootDict : Record<number,Loot> = {};
-    lootDict[0] = new Loot(LootType.godfather);
+    lootDict[0] = new Loot("godfather");
     for (let i = 0; i < 8; i++) {
         const card = lootCards.pop();
         if (card !== undefined) {
@@ -189,7 +209,7 @@ function findNextValue(array: number[], value: number ) {
 
 function stashItemOnPlayer(player: Player,playerIndex: number, item: Loot, room: string): void {
     player.money += item.value;
-    if (item.type == LootType.clip) {
+    if (item.type == "clip") {
         if ((games[room].discardedBullets > 0) && (player.blanks > 0)) {
             player.bullets++;
             games[room].discardedBullets--;
@@ -197,16 +217,16 @@ function stashItemOnPlayer(player: Player,playerIndex: number, item: Loot, room:
             // maybe doing the thing where they get rid of a blank, no reason not to, i think it should be automatic
         }
     }
-    else if (item.type == LootType.gem) {
+    else if (item.type == "gem") {
         player.gems++;
     }
-    else if (item.type == LootType.nft) {
+    else if (item.type == "nft") {
         player.nft++;
     }
-    else if (item.type == LootType.godfather) {
+    else if (item.type == "godfather") {
         games[room].bossId = playerIndex;
     } 
-    else if (item.type == LootType.medKit) {
+    else if (item.type == "medkit") {
         player.health = 3;
     }
 }
@@ -394,7 +414,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         playerArray[id].target = targetId;
         playerArray[id].completedPhase = true;
         playerArray[id].bulletChoice = bullet;
-        if (games[room].phase == Phase.LoadAndAim) {
+        if (games[room].phase == "LOADANDAIM") {
             if (bullet == 0) {
                 playerArray[id].blanks--;
             }
@@ -406,14 +426,14 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
             games[room].counter++;
             if (games[room].counter == games[room].totalAlivePlayers) {
                 games[room].counter = 0;
-                games[room].phase=Phase.GodfatherPriv;
+                games[room].phase="GODFATHERPRIV";
                 setGodfatherIncomplete(playerArray,room);
                 io.to(room).emit("getGameState",games[room]);
             }
         }
-        else if (games[room].phase == Phase.GodfatherPriv) {
+        else if (games[room].phase == "GODFATHERPRIV") {
             // playerArray[targetId].pendingHits += bullet; // check this out to make sure nothing crazy is going on
-            games[room].phase=Phase.Gambling;
+            games[room].phase="GAMBLING";
             setAllUncompleted(playerArray);
             // io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["target","player"])
             io.to(room).emit("getGameState",games[room]);
@@ -430,7 +450,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
     })
 
     socket.on("continueToGambling", (room: string) => {
-        games[room].phase = Phase.Gambling;
+        games[room].phase = "GAMBLING";
         setAllUncompleted(games[room].playerArray)
         games[room].playerArray[games[room].bossId]; // UPDATE
         io.to(room).emit("getGameState",games[room]);
@@ -489,10 +509,10 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
             games[room].lootTurnPlayerIndex = setInitialLooter(looters,games[room].bossId);
             // CHANGE THIS TO JUST A PHASE CHANGE AND AN INFO THING
             // games[room].phase = Phase.Shooting;
-            games[room].phase = Phase.Shooting;
+            games[room].phase = "SHOOTING";
             games[room].shooting = true;
             io.to(room).emit("getGameState",games[room])
-            games[room].phase = Phase.Looting;
+            games[room].phase = "LOOTING";
             games[room].shooting = false;
             if (games[room].lootPlayers.length == 0) {
                 resetToRoundStart(room)
@@ -555,7 +575,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
     })
 
     socket.on("itemAnimationComplete", (itemIndex: number,playerIndex : number, room: string) => {
-        games[room].lootDict[itemIndex] = new Loot(LootType.empty);
+        games[room].lootDict[itemIndex] = new Loot("empty");
         games[room].counter++;
         // console.log(games[room].counter)
         if (games[room].counter >= 9) {
@@ -631,7 +651,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
             }
         }
         games[room].winners = finalWinners;
-        games[room].phase = Phase.GameOver;
+        games[room].phase = "GAMEOVER";
         io.to(room).emit("getGameState",games[room]);
 
     }
@@ -644,7 +664,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         else {
         games[room].lootDict = getLootDict(games[room].lootDeck);
         games[room].lootTurnPlayerIndex = -1
-        games[room].phase = Phase.LoadAndAim;
+        games[room].phase = "LOADANDAIM";
         setAllUncompleted(games[room].playerArray);
         setAllUndamaged(games[room].playerArray);
         setAllUnhidden(games[room].playerArray);

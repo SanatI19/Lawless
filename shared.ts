@@ -56,16 +56,19 @@ export interface GameState {
     winners: Player[];
 }
 
-export enum Phase {
-    // Reset="RESET",
-    LoadAndAim="LOADANDAIM",
-    GodfatherPriv="GODFATHERPRIV",
-    Gambling="GAMBLING",
-    Shooting="SHOOTING",
-    Looting="LOOTING",
-    // RoundEnd="ROUNDEND"
-    GameOver="GAMEOVER",
-}
+// export enum Phase {
+//     // Reset="RESET",
+//     LoadAndAim="LOADANDAIM",
+//     GodfatherPriv="GODFATHERPRIV",
+//     Gambling="GAMBLING",
+//     Shooting="SHOOTING",
+//     Looting="LOOTING",
+//     // RoundEnd="ROUNDEND"
+//     GameOver="GAMEOVER",
+// }
+
+export type Phase = "LOADANDAIM" | "GODFATHERPRIV" | "GAMBLING" | "SHOOTING" | "LOOTING" | "GAMEOVER";
+
 
 export class Player {
     // Need to add more
@@ -106,15 +109,17 @@ export class Player {
     }
 }
 
-export enum LootType {
-    nft,
-    gem,
-    cash,
-    medKit,
-    clip,
-    godfather,
-    empty
-}
+// export enum LootType {
+//     nft,
+//     gem,
+//     cash,
+//     medKit,
+//     clip,
+//     godfather,
+//     empty
+// }
+
+export type LootType = "nft" | "gem" | "cash" | "medkit" | "clip" | "godfather" | "empty";
 
 export class Loot {
     public type: LootType;
