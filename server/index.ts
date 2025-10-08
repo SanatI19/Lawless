@@ -18,7 +18,7 @@ app.use(express.static(path.join(__dirname, "../client/dist")));
 // ^ adjust "dist" → "build" if that's what your React build generates
 
 // 🔹 Catch-all route to serve index.html (so React Router works)
-app.get("/files{/*path}", (req, res) => {
+app.get("/:*path", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/dist/index.html"));
 });
 
