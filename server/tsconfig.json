@@ -5,7 +5,7 @@
     "esModuleInterop": true,
     "strict": true,
     "rootDir": "../",
-    "outDir": "../dist",
+    "outDir": "dist",
     "skipLibCheck": true
   },
   "include":["../shared.ts"]
