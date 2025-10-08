@@ -8,8 +8,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 // Needed if you’re using ES modules instead of CommonJS
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
 
 const app = express()
 app.use(cors());
