@@ -4,6 +4,8 @@
     "module": "commonjs",
     "esModuleInterop": true,
     "strict": true,
+    "rootDir": "../",
+    "outDir": "./",
     "skipLibCheck": true
   },
   "include":["../shared.ts"]
