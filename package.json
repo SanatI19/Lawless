@@ -4,6 +4,6 @@
   "scripts": {
     "install": "cd client && yarn install && cd ../server && yarn install",
     "build": "cd server && yarn build",
-    "start": "node server/dist/index.js" 
+    "start": "cd server && yarn start" 
   }
 }
