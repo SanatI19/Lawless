@@ -20,12 +20,12 @@ import "./App.css";
 // type Phase = "LOADANDAIM" | "GODFATHERPRIV" | "GAMBLING" | "SHOOTING" | "LOOTING" | "GAMEOVER";
 
 const centerTextY = 3
-const gunImage = "../public/images/pistol.svg";
-const gunImageLeft = "../public/images/pistolLeft.svg";
-const bandageImage = "../public/images/bandage.svg";
-const heartImage = "../public/images/heart.svg";
-const blankImage = "../public/images/blank.svg";
-const shieldImage = "../public/images/shield.svg";
+const gunImage = "/images/pistol.svg";
+const gunImageLeft = "/images/pistolLeft.svg";
+const bandageImage = "/images/bandage.svg";
+const heartImage = "/images/heart.svg";
+const blankImage = "/images/blank.svg";
+const shieldImage = "/images/shield.svg";
 
 
 function flipped(index1: number, index2: number) : boolean {
@@ -435,22 +435,22 @@ function Game() {
   function getImage(type: LootType): string {
     let src = "";
     if (type == "cash") {
-      src = "../public/images/money.svg";
+      src = "/images/money.svg";
     }
     else if (type == "clip") {
-      src = "../public/images/bullet.svg";
+      src = "/images/bullet.svg";
     }
     else if (type == "gem") {
-      src = "../public/images/gem.svg";
+      src = "/images/gem.svg";
     }
     else if (type == "godfather") {
-      src = "../public/images/bossBadge.svg";
+      src = "/images/bossBadge.svg";
     }
     else if (type == "medkit") {
-      src = "../public/images/heart.svg";
+      src = "/images/heart.svg";
     }
     else if (type == "nft") {
-      src = "../public/images/nft.svg";
+      src = "/images/nft.svg";
     }
     return src
   }
@@ -531,7 +531,7 @@ function Game() {
           <g>
           <motion.image
             // IT WOULD BE COOL IF IT COULD BE A MIST EFFECT TYPE THING THAT ACCUMULATES
-            href={"../public/images/explosion.svg"}
+            href={"/images/explosion.svg"}
             width={4}
             height={4}
             opacity={0.99}
@@ -623,7 +623,7 @@ function Game() {
       return <g>
             {deadArray[index] ? 
             (<image 
-              href={"../public/images/skull.svg"} 
+              href={"/images/skull.svg"} 
               height={9} 
               width={9} 
               x={getX(index)+0.5} 
@@ -631,7 +631,7 @@ function Game() {
             />): 
             (
               <motion.image 
-              href={"../public/images/character.svg"} 
+              href={"/images/character.svg"} 
               height={hoverIndex==index ? (playerSize+1):(playerSize)} 
               width={hoverIndex==index ? (playerSize+1):(playerSize)} 
               x={hoverIndex==index ? (getX(index)-2):(getX(index)-1.5)} 
