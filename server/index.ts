@@ -22,9 +22,9 @@ app.use(express.static(path.join(__dirname, "../client/dist")));
 
 // 🔹 Catch-all route to serve index.html (so React Router works)
 // if (process.env.NODE_ENV === "production") {
-    app.get("/file{.:ext}", (req, res) => {
-    res.sendFile(path.join(__dirname, "../client/dist/index.html"));
-    });
+app.get("/", (req, res) => {
+res.sendFile(path.join(__dirname, "../client/dist/index.html"));
+});
 // }
 
 const server = createServer(app)
