@@ -14,11 +14,14 @@ import { fileURLToPath } from "url";
 const app = express()
 app.use(cors());
 
+const staticPath = path.join(__dirname, "../client/dist")
+console.log(staticPath)
+
 app.use(express.static(path.join(__dirname, "../client/dist"))); 
 // ^ adjust "dist" → "build" if that's what your React build generates
 
 // 🔹 Catch-all route to serve index.html (so React Router works)
-app.get("/:path(*)", (req, res) => {
+app.get("/file{.:ext}", (req, res) => {
   res.sendFile(path.join(__dirname, "../client/dist/index.html"));
 });
 
