@@ -21,11 +21,11 @@ app.use(express.static(path.join(__dirname, "../client/dist")));
 // ^ adjust "dist" → "build" if that's what your React build generates
 
 // 🔹 Catch-all route to serve index.html (so React Router works)
-if (process.env.NODE_ENV === "production") {
+// if (process.env.NODE_ENV === "production") {
     app.get("/file{.:ext}", (req, res) => {
     res.sendFile(path.join(__dirname, "../client/dist/index.html"));
     });
-}
+// }
 
 const server = createServer(app)
 const io = new Server<ClientToServerEvents,ServerToClientEvents>(server, {
