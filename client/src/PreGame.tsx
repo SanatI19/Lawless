@@ -27,6 +27,7 @@ function PreGame() {
   const room = state.room;
   console.log(room)
   let playerId;
+  let deviceId;
 
   // const sendName = (name: string, id: number)  => {
   //   setName(name)
@@ -51,19 +52,28 @@ function PreGame() {
 
 //   const handleSubmit = (e:FormEvent) => {
 //     e.preventDefault();
+  // useEffect(() => {
+  //   socket.emit("requestRoom", room)
+  // },[room])
+
     useEffect(() => {
         let playerUUID = sessionStorage.getItem("playerUUID");
+        let deviceUUID = localStorage.getItem("deviceUUIDlawlessForever");
         if (playerUUID === null) {
             playerUUID = crypto.randomUUID();
         }
-        console.log(room)
+        if (deviceUUID === null) {
+          deviceUUID = crypto.randomUUID();
+        }
+        // console.log(room)
         playerId = playerUUID;
         sessionStorage.setItem("playerUUID",playerId);
-        console.log(playerId)
-
-        console.log("AYO")
+        // console.log(playerId)
+        deviceId = deviceUUID;
+        localStorage.setItem("deviceUUIDlawlessForever",deviceId);
+        // console.log("AYO")
     
-        socket.emit("joinPlayerArray", room, playerId)
+        socket.emit("joinPlayerArray", room, deviceId, playerId)
 
         const handleGetPlayerIndex = (index: number) => {
             thisId = index;
@@ -75,6 +85,10 @@ function PreGame() {
             setName(playerArrayIn[thisId].name)
         }
 
+        const handleFailedToAccessRoom = () => {
+          navigate(`/`)
+        }
+
         const handleStartGame = () => {
           navigate(`/${room}/game`,{state :{room: room, id: thisId}})
         }
@@ -82,11 +96,13 @@ function PreGame() {
         socket.on("sendPlayerArray",handleSendPlayerArray);
         socket.on("getPlayerIndex", handleGetPlayerIndex);
         socket.on("startGame", handleStartGame);
+        socket.on("failedToAccessRoom",handleFailedToAccessRoom);
 
         return () => {
-          socket.on("sendPlayerArray",handleSendPlayerArray);
+          socket.off("sendPlayerArray",handleSendPlayerArray);
           socket.off("getPlayerIndex", handleGetPlayerIndex);
           socket.off("startGame", handleStartGame);
+          socket.off("failedToAccessRoom",handleFailedToAccessRoom);
         };
 
     },[])

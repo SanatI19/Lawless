@@ -6,8 +6,8 @@ import PreGame from "./PreGame";
 import Game from "./Game";
 import { ServerToClientEvents, ClientToServerEvents } from "../../shared";
 
-// const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io("http://localhost:3000");
-const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
+const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io("http://localhost:3000");
+// const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
 
 
 export const SocketContext = createContext<Socket<ServerToClientEvents, ClientToServerEvents>>(socket);
@@ -15,8 +15,8 @@ export const SocketContext = createContext<Socket<ServerToClientEvents, ClientTo
 function App() {
   // Top-level socket: only one connection for the whole app
   const [socket] = useState<Socket<ServerToClientEvents, ClientToServerEvents>>(() =>
-    // io("http://localhost:3000")
-    io()
+    io("http://localhost:3000")
+    // io()
   );
 
   return (

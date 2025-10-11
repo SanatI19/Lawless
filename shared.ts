@@ -1,6 +1,6 @@
 export interface ServerToClientEvents {
     serverMsg: (data : {msg : string; room: string}) => void;
-    enterExistingRoom: (room: string) => void;
+    enterExistingRoom: (room: string, reason: string, id: number) => void;
     unableToCreateRoom: () => void;
     sendPlayerArray: (playerArray: Player[]) => void;
     startGame: () => void;
@@ -13,17 +13,19 @@ export interface ServerToClientEvents {
     getPlayerNames: (playerArray: Player[]) => void;
     getPlayerIndex: (index: number) => void;
     animateItem: (itemIndex: number, playerIndex: number) => void;
+    failedToAccessRoom: () => void;
+    changeConnected: (playerArray: Player[]) => void;
     // list all of the server to client events here (so easy goddamn)
 }
 
 export interface ClientToServerEvents {
     clientMsg: (data : {msg : string; room: string}) => void;
     createRoom: (playerId: string) => void;
-    joinRoom: (room: string, playerId: string) => void;
+    joinRoom: (room: string, deviceId: string, playerId: string) => void;
     requestPlayerArray: (room: string) => void;
     sendName: (name: string, id: number, room: string) => void;
     triggerStartGame: (room: string) => void;
-    requestInitialState: (room: string) => void;
+    requestInitialState: (room: string, id: number) => void;
     requestGameState: (room: string) => void;
     sendBulletAndTarget: (bullet: number, targetId: number, id: number, room: string) => void;
     sendGodfatherDecision: (id: number, target: number, room: string) => void;
@@ -31,10 +33,11 @@ export interface ClientToServerEvents {
     requestLootDict: (room: string) => void;
     addItemToPlayer: (itemIndex: number, playerIndex: number, room:string) => void;
     continueToGambling: (room: string) => void;
-    joinPlayerArray: (room:string, playerId: string) => void;
+    joinPlayerArray: (room:string, deviceId: string, playerId: string) => void;
     socketDisconnected: (id: number, room: string) => void;
     itemAnimationComplete: (itemIndex: number, playerIndex: number, room: string) => void;
     shotsFiredComplete: (room: string) => void;
+    requestRoom: (room: string) => void;
     // list all of the client to server events here 
 }
 
@@ -54,6 +57,8 @@ export interface GameState {
     round: number;
     shooting: boolean;
     winners: Player[];
+    sockets: string[];
+    // timeout: ReturnType<typeof setTimeout>;
 }
 
 // export enum Phase {
@@ -73,7 +78,7 @@ export type Phase = "LOADANDAIM" | "GODFATHERPRIV" | "GAMBLING" | "SHOOTING" | "
 export class Player {
     // Need to add more
     public id : number = 0;
-
+    public deviceId: string;
     public internalId: string;
     // public playerId : number = 0;
     public name: string = "";
@@ -102,8 +107,9 @@ export class Player {
 
     // public index: number = 0;
 
-    public constructor(name: string, idIn: string) {
+    public constructor(name: string, deviceIdIn: string, idIn: string) {
         this.name = name;
+        this.deviceId = deviceIdIn
         this.internalId = idIn;
         this.connected=true;
     }

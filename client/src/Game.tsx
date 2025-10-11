@@ -1,7 +1,7 @@
 
 import { useContext, useEffect, useState, useMemo, JSX} from "react";
 import { motion } from "framer-motion";
-import { useLocation} from "react-router-dom";
+import { useLocation, useNavigate} from "react-router-dom";
 import { SocketContext } from "./App";
 import { GameState, Player , Phase, Loot, LootType} from "../../shared";
 import "./App.css";
@@ -338,12 +338,14 @@ function getLootCardStrokeColor(type: LootType): string {
 
 function Game() {
   const socket = useContext(SocketContext);
+  const navigate = useNavigate();
   const [playerNames,setPlayerNames] = useState<string[]>([""]);
   const [playerHealth,setPlayerHealth] = useState<number[]>([]);
   const [phase,setPhase] = useState<Phase>("LOADANDAIM")
   const [bulletChoice,setBulletChoice] = useState(false);
   const [playerButtons,setPlayerButtons] = useState(Boolean);
   const [playerArray, setPlayerArray] = useState<Player[]>([]);
+  const [connectedArray, setConnectedArray] = useState<boolean[]>([]);
   const [completedPhase,setCompletedPhase] = useState(false);
   // const [hiding, setHiding] = useState(false);
   const [hidingArray, setHidingArray] = useState<boolean[]>([false])
@@ -376,7 +378,7 @@ function Game() {
   const room = state.room;
   const thisId = state.id;
   // before i get to the end, need to change the above so it is dependent on the localStorage instead
-  const [thisPlayer,setThisPlayer] = useState<Player>(new Player("",""))
+  const [thisPlayer,setThisPlayer] = useState<Player>(new Player("","", ""))
 
   console.log(playerArray)
   
@@ -478,7 +480,7 @@ function Game() {
   }
   
     useEffect(() => {
-      socket.emit("requestInitialState", room)
+      socket.emit("requestInitialState", room, thisId)
     },[room])
 
     useEffect(() => {
@@ -616,7 +618,8 @@ function Game() {
                         />
                       </g>
     }
-
+// 
+    // const playerImage (name:)
     function playerImage (name: string, index: number): JSX.Element {
       let sizes = 2;
       let playerSize = 13;
@@ -631,12 +634,14 @@ function Game() {
             />): 
             (
               <motion.image 
+              key = {`${index} + ${connectedArray}`}
               href={"/images/character.svg"} 
               height={hoverIndex==index ? (playerSize+1):(playerSize)} 
               width={hoverIndex==index ? (playerSize+1):(playerSize)} 
               x={hoverIndex==index ? (getX(index)-2):(getX(index)-1.5)} 
               y={hoverIndex==index ? (getY(index)-7):(getY(index)-6.5)}
-              opacity={(hidingArray[index] && phase == "LOOTING") ? 0.3: 1}
+              // opacity={(hidingArray[index] && phase == "LOOTING") ? 0.3: 1}
+              opacity={connectedArray[index] ? 1 : 0.3}
 
               animate={
                 ((playerButtons) && (!deadArray[index]) && (index!== thisId) && !((phase=="GODFATHERPRIV") && (thisId !== godfatherIndex) && (index === targetArray[thisId])))
@@ -734,25 +739,27 @@ function Game() {
           : null}
           {(bullet == 1 && !hidingArray[index]) ? (
           <motion.image
+            key={`${index}-${target}-${bullet}`}
             href={getImage("clip")}
             width={4}
             height={4}
             initial={{
-              rotate: `${calculateAngle(index, targetArray[index]) + 90}deg`, 
-              x:getRotationXGun(index,targetArray[index]) + getBulletChangeX(index,targetArray[index]),
-              y:getRotationYGun(index,targetArray[index]) + getBulletChangeY(index,targetArray[index]),
+              rotate: `${calculateAngle(index, target) + 90}deg`, 
+              x:getRotationXGun(index,target) + getBulletChangeX(index,target),
+              y:getRotationYGun(index,target) + getBulletChangeY(index,target),
             }}
           />
         ) : (
           <motion.image
             // IT WOULD BE COOL IF IT COULD BE A MIST EFFECT TYPE THING THAT ACCUMULATES
+            key={`${index}-${target}-${bullet}`}
             href={blankImage}
             width={4}
             height={4}
             initial={{
-              rotate: `${calculateAngle(index, targetArray[index]) + 90}deg`, 
-              x:getRotationXGun(index,targetArray[index]) + getBulletChangeX(index,targetArray[index]),
-              y:getRotationYGun(index,targetArray[index]) + getBulletChangeY(index,targetArray[index]),
+              rotate: `${calculateAngle(index, target) + 90}deg`, 
+              x:getRotationXGun(index,target) + getBulletChangeX(index,target),
+              y:getRotationYGun(index,target) + getBulletChangeY(index,target),
             }}
 
           />
@@ -829,6 +836,14 @@ function Game() {
         setPlayerNames(playerArray.map(player => player.name));
       }
 
+      const handleFailedToAccessRoom = () => {
+        navigate(`/`)
+      }
+
+      const handleChangeConnected = (playerArray: Player[]) => {
+        setConnectedArray(playerArray.map(player => player.connected));
+      }
+
       const handleGetGameState = (gameState: GameState)  => {
         setGodfatherIndex(gameState.bossId);
         setLootDict(gameState.lootDict);
@@ -836,6 +851,7 @@ function Game() {
         setLootTurn(gameState.lootTurnPlayerIndex === thisId);
         setRound(gameState.round);
         const playerArray = gameState.playerArray;
+        setConnectedArray(playerArray.map(player => player.connected))
         setPlayerArray(gameState.playerArray);
         const thisPlayer = playerArray[thisId];
         setPlayerHealth(playerArray.map(player => player.health));
@@ -878,12 +894,16 @@ function Game() {
       socket.on("getGameState",handleGetGameState);
       socket.on("disconnect",handleSocketDisconnect);
       socket.on("animateItem",handleItemAnimation)
+      socket.on("failedToAccessRoom", handleFailedToAccessRoom);
+      socket.on("changeConnected",handleChangeConnected);
 
       return () => {
         socket.off("getPlayerNames",handleGetNames)
         socket.off("getGameState",handleGetGameState);
         socket.off("disconnect",handleSocketDisconnect);
-        socket.off("animateItem",handleItemAnimation)
+        socket.off("animateItem",handleItemAnimation);
+        socket.off("failedToAccessRoom",handleFailedToAccessRoom);
+        socket.off("changeConnected",handleChangeConnected);
       }
     },[])
 

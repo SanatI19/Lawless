@@ -21,11 +21,24 @@ function PreLobby() {
   const [room, setRoom] = useState("");
   const [err, setErr] = useState("");
   let playerId: string;
+  let deviceId: string;
+
+  playerId = crypto.randomUUID();
+  sessionStorage.setItem("playerUUID", playerId);
+  let deviceIdTemp = localStorage.getItem("deviceUUIDlawlessForever");
+  if (deviceIdTemp === null) {
+    deviceIdTemp = crypto.randomUUID();
+  }
+  deviceId = deviceIdTemp;
+  localStorage.setItem("deviceUUIDlawlessForever", deviceId);
+
+  console.log(deviceId)
 
 
 
   const joinRoom = () => {
-    socket.emit("joinRoom",room,playerId);
+    console.log(deviceId);
+    socket.emit("joinRoom",room, deviceId, playerId);
     setRoom("");
   }
 
@@ -34,16 +47,29 @@ function PreLobby() {
     socket.emit("createRoom",playerId)
   }
   useEffect(() => {
-    playerId = crypto.randomUUID();
-    sessionStorage.setItem("playerUUID", playerId);
+    // playerId = crypto.randomUUID();
+    // sessionStorage.setItem("playerUUID", playerId);
+    // let deviceIdTemp = localStorage.getItem("deviceUUIDlawlessForever");
+    // if (deviceIdTemp === null) {
+    //   deviceIdTemp = crypto.randomUUID();
+    // }
+    // deviceId = deviceIdTemp;
+    // localStorage.setItem("deviceUUIDlawlessForever", deviceId);
+    console.log(deviceId)
 
-    const handleEnterExistingRoom = (roomId:string) => {
+    const handleEnterExistingRoom = (roomId:string, reason: string, thisId: number) => {
         console.log(roomId)
+        console.log(reason)
         if (roomId == "") {
-            setErr("Room does not exist")
+            setErr(reason)
         }
         else {
+          if (reason == "join") {
+            navigate(`/${roomId}/game`,{state :{room: roomId, id: thisId}});
+          }
+          else {
             navigate(`/${roomId}/pregame`,{state :{room: roomId}});
+          }
         }
     };
 

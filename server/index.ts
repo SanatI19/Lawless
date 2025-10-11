@@ -57,8 +57,20 @@ server.listen(PORT, () => {
 
 //CAN HAVE SIMPLE FUNCTION WHICH TAKES DEVICE ID AND TRANSFORMS IT TO AN INTEGER FOR EASIER HANDLING
 
-const roomCodeLength = 5;
+const roomCodeLength = 4;
 const maxPlayers = 8;
+const ROOM_TIMEOUT= 5*1000;
+
+// function resetRoomTimeout(room: string) {
+//   if (!room) return;
+//   clearTimeout(games[room].timeout);
+//   games[room].timeout = setTimeout(() => deleteRoom(room), ROOM_TIMEOUT);
+// }
+
+// function deleteRoom(room: string) {
+//   if (games[room]) clearTimeout(games[room].timeout);
+//   delete games[room];
+// }
 
 
 function randomizeArray(array: any[]) {
@@ -104,12 +116,12 @@ function createNewRandomizedLootDeck(): Loot[] {
 }
 
 
-function newGameState(playerId: string):GameState {
+function newGameState(playerId: string, roomId : string):GameState {
     const playerArray : Player[] = []
     let joinable = true;
     // let phaseVal = "LOADANDAIM";
     const lootVals: Loot[] = createNewRandomizedLootDeck();
-    return {playerArray, joinable, phase: "LOADANDAIM",counter:0,totalAlivePlayers: 0, bossId: 0, discardedBullets: 0, lootDeck: lootVals,lootDict: {},lootPlayers: [], lootTurnPlayerIndex: 0, round: 0, shooting: false, winners: []};
+    return {playerArray, joinable, phase: "LOADANDAIM",counter:0,totalAlivePlayers: 0, bossId: 0, discardedBullets: 0, lootDeck: lootVals,lootDict: {},lootPlayers: [], lootTurnPlayerIndex: 0, round: 0, shooting: false, winners: [], sockets: []};
 }
 
 function chooseGodfather(totalPlayers : number) {
@@ -312,17 +324,24 @@ function totalNft(num: number) : number {
 }
 
 const games : Record<string,GameState> = {};
+const socketToRoom : Record<string,string> = {};
 
 io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) => {
     socket.on("clientMsg",(data) => {
         io.sockets.emit("serverMsg",data);
     })
 
-    socket.on("joinRoom",(room: string, playerId: string) => {
-        let outRoom = ""
+    socket.on("joinRoom",(room: string, deviceId: string, playerId: string) => {
+        let outRoom = "";
+        let reason = "";
+        let id = -1;
         if (games[room] !== undefined && games[room].joinable) {
             // do some putting of the players in the array
             socket.join(room);
+            socketToRoom[socket.id] = room;
+            console.log(Array.from(socket.rooms)[1])
+            // console.log(socket.rooms)
+            // console.log(socket.rooms.values().next().value)
             // const playerArray = games[room].playerArray;
             // const index = playerArray.length;
             // const string = "Player" + (index+1);
@@ -330,7 +349,24 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
             // playerArray[index].playerId = index;
             outRoom = room;
         }
-        socket.emit("enterExistingRoom",outRoom);
+        if (games[room] === undefined) {
+            reason = "Room does not exist";
+        }
+        else if (!games[room].joinable) {
+            reason = "Room is not joinable";
+            for (let i = 0; i < games[room].playerArray.length; i++) {
+                const player = games[room].playerArray[i];
+                console.log(player.deviceId);
+                console.log(deviceId);
+                if (!player.connected && (player.deviceId == deviceId)) {
+                    reason = "join"
+                    outRoom = room;
+                    id = i;
+                    break
+                }
+            }
+        }
+        socket.emit("enterExistingRoom",outRoom, reason, id);
 
     })
 
@@ -347,12 +383,20 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
 
         if (ableToCreateRoom) {
             socket.join(roomId);
-            games[roomId] = newGameState(playerId);
-            if (games)
-            socket.emit("enterExistingRoom",roomId);
+            socketToRoom[socket.id] = roomId;
+            games[roomId] = newGameState(playerId, roomId);
+            games[roomId].sockets.push(socket.id);
+            // if (games)
+            socket.emit("enterExistingRoom",roomId,"", -1);
         }
         else {
             socket.emit("unableToCreateRoom");
+        }
+    })
+
+    socket.on("requestRoom", (room: string) => {
+        if (games[room] === undefined) {
+            socket.emit("failedToAccessRoom");
         }
     })
 
@@ -361,8 +405,14 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
     })
 
 
-    socket.on("joinPlayerArray",(room: string, playerId: string) => {
+    socket.on("joinPlayerArray",(room: string, deviceId: string, playerId: string) => {
+        if (games[room] === undefined) {
+            socket.emit("failedToAccessRoom")
+        }
+        else {
         socket.join(room)
+        socketToRoom[socket.id] = room;
+
         const playerArray = games[room].playerArray;
         const playerIds = playerArray.map(player => player.internalId);
         let index = 0;
@@ -371,17 +421,20 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
             socket.emit("getPlayerIndex",index);
             socket.emit("sendPlayerArray",playerArray);
         }
+        // add else if here to handle when the playerArray is joined but not 
         else {
             index = playerArray.length;
             const name = "Player" + (index+1);
-            playerArray.push(new Player(name,playerId))
+            playerArray.push(new Player(name,deviceId, playerId))
             playerArray[index].id = index;
+            games[room].sockets[index] = socket.id;
             socket.emit("getPlayerIndex",index);
             io.to(room).emit("sendPlayerArray",playerArray);
         }
         if (playerArray.length == 8) {
             games[room].joinable = false;
             // need to add something to fix potential race condition
+        }
         }
     })
 
@@ -401,17 +454,35 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         io.to(room).emit("startGame");
     })
 
-    socket.on("requestInitialState",(room: string) => {
-        socket.join(room)
-        socket.emit("getPlayerNames",games[room].playerArray);
-        socket.emit("getGameState",games[room]);
+    socket.on("requestInitialState",(room: string, id: number) => {
+        if (games[room] !== undefined) {  
+            console.log(games[room].sockets)    
+            socket.join(room);
+            socketToRoom[socket.id] = room;
+            // console.log(socket.rooms)
+            games[room].sockets[id] = socket.id;
+            if (!games[room].playerArray[id].connected) {
+                games[room].playerArray[id].connected = true;
+                io.to(room).emit("changeConnected",games[room].playerArray);
+            }
+            socket.emit("getPlayerNames",games[room].playerArray);
+            socket.emit("getGameState",games[room]);
+        }
+        else {
+            socket.emit("failedToAccessRoom");
+        }
         // socket.emit("sendPlayersAndPhase",games[room].playerArray,games[room].phase,["INIT"]);
         // socket.emit("sendGodfatherIndex",games[room].bossId);
         // socket.emit("sendLootPlayerTurn",games[room].lootTurnPlayerIndex);
     })
 
     socket.on("requestGameState", (room: string) => {
-        socket.emit("getGameState", games[room]);
+        if (games[room] === undefined) {
+            socket.emit("failedToAccessRoom");
+        }
+        else {
+            socket.emit("getGameState", games[room]);
+        }
     })
 
     socket.on("sendBulletAndTarget", (bullet: number, targetId: number, id: number, room: string) => {
@@ -603,8 +674,25 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         }
     })
 
+    socket.on("disconnect", (reason) => {
+        // console.log(socket.id);
+        // console.log(socket.rooms)
+        const roomId = socketToRoom[socket.id];
+        console.log(`Room: ${roomId}`)
+        if (roomId !== undefined && games[roomId] !== undefined) {
+            const index = games[roomId].sockets.indexOf(socket.id);
+            console.log(index)
+            games[roomId].playerArray[index].connected = false;
+            console.log(games[roomId].playerArray[index])
+            io.to(roomId).emit("changeConnected",games[roomId].playerArray)
+        }
+    })
+
     socket.on("socketDisconnected",(id:number, room: string) => {
-        games[room].playerArray[id].connected = false;
+        if (games[room] !== undefined) {
+            games[room].playerArray[id].connected = false;
+            console.log(games[room].playerArray[id].name)
+        }
     })
 
     function endGame(room: string) {
