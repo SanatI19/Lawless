@@ -23,6 +23,7 @@ function PreGame() {
   const [length,setLength] = useState(Number);
   const [name,setName] = useState<string>("");
   const [nameChange, setNameChange] = useState<boolean>(false);
+  const [connectedArray, setConnectedArray] = useState<boolean[]>([true,true,true,true,true,true,true,true]);
   const {state} = useLocation()
   const room = state.room;
   console.log(room)
@@ -33,6 +34,7 @@ function PreGame() {
   //   setName(name)
   //   socket.emit("sendName",name,id,room);
   // }
+  console.log(connectedArray);
   
   const triggerStartGame = () => {
     socket.emit("triggerStartGame",room)
@@ -74,6 +76,7 @@ function PreGame() {
         // console.log("AYO")
     
         socket.emit("joinPlayerArray", room, deviceId, playerId)
+        // console.log("")
 
         const handleGetPlayerIndex = (index: number) => {
             thisId = index;
@@ -93,16 +96,22 @@ function PreGame() {
           navigate(`/${room}/game`,{state :{room: room, id: thisId}})
         }
 
+        const handleChangeConnected = (playerArray: Player[]) => {
+          setConnectedArray(playerArray.map(player => player.connected));
+        }
+
         socket.on("sendPlayerArray",handleSendPlayerArray);
         socket.on("getPlayerIndex", handleGetPlayerIndex);
         socket.on("startGame", handleStartGame);
         socket.on("failedToAccessRoom",handleFailedToAccessRoom);
+        socket.on("changeConnected",handleChangeConnected);
 
         return () => {
           socket.off("sendPlayerArray",handleSendPlayerArray);
           socket.off("getPlayerIndex", handleGetPlayerIndex);
           socket.off("startGame", handleStartGame);
           socket.off("failedToAccessRoom",handleFailedToAccessRoom);
+          socket.off("changeConnected", handleChangeConnected);
         };
 
     },[])
@@ -114,7 +123,7 @@ function PreGame() {
           changeTheName(e)}/>  
         <button disabled={!nameChange} onClick={() => changeName(name)}>Change name</button>
         {playerArray.map((player: Player, id: number) =>
-            <p key={id} style={{fontWeight: id==thisId ?  "bold" : "none"}}>{player.name}</p>
+            <p key={id} style={{fontWeight: id==thisId ?  "bold" : "none", textDecoration: connectedArray[id] ? "none" : "line-through"}}>{player.name}</p>
         )
       }
       </div>

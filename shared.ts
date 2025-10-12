@@ -58,6 +58,10 @@ export interface GameState {
     shooting: boolean;
     winners: Player[];
     sockets: string[];
+    started: boolean;
+
+    /** An array of all device IDs that can be used to rejoin the game (after disconnect) */
+    // rejoinable: {[deviceId: string] : number[]};
     // timeout: ReturnType<typeof setTimeout>;
 }
 

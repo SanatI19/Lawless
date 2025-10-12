@@ -58,8 +58,6 @@ function PreLobby() {
     console.log(deviceId)
 
     const handleEnterExistingRoom = (roomId:string, reason: string, thisId: number) => {
-        console.log(roomId)
-        console.log(reason)
         if (roomId == "") {
             setErr(reason)
         }
