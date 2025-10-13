@@ -5,27 +5,15 @@ import { instrument } from "@socket.io/admin-ui";
 import cors from "cors";
 import {ServerToClientEvents , ClientToServerEvents, Player, GameState, Phase, Loot, LootType} from "../shared";
 import path from "path";
-import { fileURLToPath } from "url";
-
-// Needed if you’re using ES modules instead of CommonJS
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
 
 const app = express()
 app.use(cors());
 
-// const staticPath = path.join(__dirname, "../client/dist")
-// console.log(staticPath)
 
 app.use(express.static(path.join(__dirname, "../../../client/dist"))); 
-// ^ adjust "dist" → "build" if that's what your React build generates
-
-// 🔹 Catch-all route to serve index.html (so React Router works)
-// if (process.env.NODE_ENV === "production") {
 app.get("/*path", (req, res) => {
 res.sendFile(path.join(__dirname, "../../../client/dist/index.html"));
 });
-// }
 
 const server = createServer(app)
 const io = new Server<ClientToServerEvents,ServerToClientEvents>(server, {
@@ -42,35 +30,11 @@ server.listen(PORT, () => {
   console.log("Server listening on port " + (process.env.PORT || 3000));
 });
 
-//socket.on is listener
-//socket.emit("name", data(stuff that is sent))
-//socket.on("sameName",what to do (function, etc))
-//socket.emit is sender
-//io.emit is full sender?
-
-// //Add all necessary parameters here
-// const waitTime = 500; // wait time from when final player does something and io emitted
-// const playerArray: Types.Player[] = []
-// const maxPlayers = 8;
-// let doneCounter = 0; // keeps track of number of people who are done at each point
-// //need to determine device id or a unique identifier
-
-//CAN HAVE SIMPLE FUNCTION WHICH TAKES DEVICE ID AND TRANSFORMS IT TO AN INTEGER FOR EASIER HANDLING
 
 const roomCodeLength = 4;
 const maxPlayers = 8;
-const ROOM_TIMEOUT= 5*1000;
+const ROOM_TIMEOUT= 10*1000*60; // 10 min timer
 
-// function resetRoomTimeout(room: string) {
-//   if (!room) return;
-//   clearTimeout(games[room].timeout);
-//   games[room].timeout = setTimeout(() => deleteRoom(room), ROOM_TIMEOUT);
-// }
-
-// function deleteRoom(room: string) {
-//   if (games[room]) clearTimeout(games[room].timeout);
-//   delete games[room];
-// }
 
 
 function randomizeArray(array: any[]) {
@@ -116,13 +80,34 @@ function createNewRandomizedLootDeck(): Loot[] {
 }
 
 
-function newGameState(playerId: string, roomId : string):GameState {
+function newGameState(playerId: string):GameState {
     const playerArray : Player[] = []
     let joinable = true;
-    // let phaseVal = "LOADANDAIM";
     const lootVals: Loot[] = createNewRandomizedLootDeck();
     return {playerArray, joinable, phase: "LOADANDAIM",counter:0,totalAlivePlayers: 0, bossId: 0, discardedBullets: 0, lootDeck: lootVals,lootDict: {},lootPlayers: [], lootTurnPlayerIndex: 0, round: 0, shooting: false, winners: [], sockets: [], started: false};
 }
+
+function initGameTimer(roomId: string) {
+    gameTimers[roomId] = setTimeout(() => deleteRoom(roomId), 5*ROOM_TIMEOUT);
+}
+
+function resetRoomTimeout(room: string, multiplier: number) {
+  if (!room) return;
+  clearTimeout(gameTimers[room]);
+  gameTimers[room] = setTimeout(() => deleteRoom(room), multiplier* ROOM_TIMEOUT);
+}
+
+function deleteRoom(room: string) {
+  if (games[room]) clearTimeout(gameTimers[room]);
+  delete games[room];
+}
+
+// function finalRoomTimeout(room: string, multiplier: number) {
+//     if (!room) return;
+//   clearTimeout(gameTimers[room]);
+//   gameTimers[room] = setTimeout(() => deleteRoom(room), ROOM_TIMEOUT);
+// }
+
 
 function chooseGodfather(totalPlayers : number) {
     return Math.floor(Math.random() * totalPlayers);
@@ -324,6 +309,7 @@ function totalNft(num: number) : number {
 }
 
 const games : Record<string,GameState> = {};
+const gameTimers : Record<string,NodeJS.Timeout> = {}
 const socketToRoom : Record<string,string> = {};
 
 io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) => {
@@ -379,7 +365,8 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         if (ableToCreateRoom) {
             socket.join(roomId);
             socketToRoom[socket.id] = roomId;
-            games[roomId] = newGameState(playerId, roomId);
+            games[roomId] = newGameState(playerId);
+            initGameTimer(roomId);
             games[roomId].sockets.push(socket.id);
             // if (games)
             socket.emit("enterExistingRoom",roomId,"", -1);
@@ -395,87 +382,107 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         }
     })
 
-    socket.on("requestPlayerArray",(room: string) => {
-        socket.emit("sendPlayerArray",games[room].playerArray)
-    })
-
 
     socket.on("joinPlayerArray",(room: string, deviceId: string, playerId: string) => {
         if (games[room] === undefined) {
             socket.emit("failedToAccessRoom")
         }
         else {
-        socket.join(room)
-        socketToRoom[socket.id] = room;
+            resetRoomTimeout(room, 1)
+            socket.join(room)
+            socketToRoom[socket.id] = room;
 
-        const playerArray = games[room].playerArray;
-        const playerIds = playerArray.map(player => player.internalId);
-        const deviceIds = playerArray.map(player => player.deviceId);
-        let index = 0;
-        if (playerIds.includes(playerId)) {
-            index = playerIds.indexOf(playerId)
-            games[room].sockets[index] = socket.id;
-            socket.emit("getPlayerIndex",index);
-            socket.emit("sendPlayerArray",playerArray);
-            if (!games[room].playerArray[index].connected) {
-                games[room].playerArray[index].connected = true;
-                io.to(room).emit("changeConnected",games[room].playerArray);
-            }
-        }
-        // add else if here to handle when the playerArray is joined but not 
-        else {
-            let rejoin = false;
-            for (let i = 0; i < games[room].playerArray.length; i++) {
-                const player = games[room].playerArray[i];
-                if (!player.connected && (player.deviceId == deviceId)) {
-                    rejoin = true;
-                    index = i;
-                    player.internalId = playerId;
-                    break
-                }
-            }
-
-            if (rejoin) {
+            const playerArray = games[room].playerArray;
+            const playerIds = playerArray.map(player => player.internalId);
+            const deviceIds = playerArray.map(player => player.deviceId);
+            let index = 0;
+            if (playerIds.includes(playerId)) {
+                index = playerIds.indexOf(playerId)
+                games[room].sockets[index] = socket.id;
                 socket.emit("getPlayerIndex",index);
                 socket.emit("sendPlayerArray",playerArray);
-                games[room].sockets[index] = socket.id;
                 if (!games[room].playerArray[index].connected) {
                     games[room].playerArray[index].connected = true;
                     io.to(room).emit("changeConnected",games[room].playerArray);
                 }
             }
             else {
-                index = playerArray.length;
-                const name = "Player" + (index+1);
-                playerArray.push(new Player(name,deviceId, playerId))
-                playerArray[index].id = index;
-                games[room].sockets[index] = socket.id;
-                socket.emit("getPlayerIndex",index);
-                io.to(room).emit("sendPlayerArray",playerArray);
+                let rejoin = false;
+                for (let i = 0; i < games[room].playerArray.length; i++) {
+                    const player = games[room].playerArray[i];
+                    if (!player.connected && (player.deviceId == deviceId)) {
+                        rejoin = true;
+                        index = i;
+                        player.internalId = playerId;
+                        break
+                    }
+                }
+
+                if (rejoin) {
+                    socket.emit("getPlayerIndex",index);
+                    socket.emit("sendPlayerArray",playerArray);
+                    games[room].sockets[index] = socket.id;
+                    if (!games[room].playerArray[index].connected) {
+                        games[room].playerArray[index].connected = true;
+                        io.to(room).emit("changeConnected",games[room].playerArray);
+                    }
+                }
+                else {
+                    index = playerArray.length;
+                    const name = "Player" + (index+1);
+                    playerArray.push(new Player(name,deviceId, playerId))
+                    // playerArray[index].id = index;
+                    games[room].sockets[index] = socket.id;
+                    socket.emit("getPlayerIndex",index);
+                    io.to(room).emit("sendPlayerArray",playerArray);
+                }
+            }
+            if (playerArray.length == 8) {
+                games[room].joinable = false;
+                // need to add something to fix potential race condition
             }
         }
-        if (playerArray.length == 8) {
-            games[room].joinable = false;
-            // need to add something to fix potential race condition
+    })
+
+    socket.on("requestRemovePlayer", (room: string, index: number) => {
+        if (games[room] === undefined) {
+            socket.emit("failedToAccessRoom");
         }
+        else {
+            resetRoomTimeout(room, 1);
+            const playerArray = games[room].playerArray;
+            playerArray.splice(index,1);
+            io.to(room).emit("removePlayerFromLobby", index, playerArray);
         }
     })
 
 
     socket.on("sendName",(name: string, id: number, room: string) => {
-        games[room].playerArray[id].name = name;
-        io.to(room).emit("sendPlayerArray",games[room].playerArray);
+        if (games[room] === undefined) {
+            socket.emit("failedToAccessRoom");
+        }
+        else {
+            resetRoomTimeout(room,1);
+            games[room].playerArray[id].name = name;
+            io.to(room).emit("sendPlayerArray",games[room].playerArray);
+        }
     })
 
     socket.on("triggerStartGame",(room: string) => {
-        games[room].started = true;
-        games[room].joinable = false;
-        games[room].totalAlivePlayers = games[room].playerArray.length;
-        games[room].lootTurnPlayerIndex = -1
-        // games[room].playerArray[chooseGodfather(games[room].totalAlivePlayers)].godfather = true;
-        games[room].bossId = chooseGodfather(games[room].totalAlivePlayers);
-        games[room].lootDict = getLootDict(games[room].lootDeck);
-        io.to(room).emit("startGame");
+        if (games[room] === undefined) {
+            socket.emit("failedToAccessRoom");
+        }
+        else {
+            resetRoomTimeout(room, 1);
+        
+            games[room].started = true;
+            games[room].joinable = false;
+            games[room].totalAlivePlayers = games[room].playerArray.length;
+            games[room].lootTurnPlayerIndex = -1
+            games[room].bossId = chooseGodfather(games[room].totalAlivePlayers);
+            games[room].lootDict = getLootDict(games[room].lootDeck);
+            io.to(room).emit("startGame");
+        }
     })
 
     socket.on("requestInitialState",(room: string, id: number) => {
@@ -493,9 +500,6 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         else {
             socket.emit("failedToAccessRoom");
         }
-        // socket.emit("sendPlayersAndPhase",games[room].playerArray,games[room].phase,["INIT"]);
-        // socket.emit("sendGodfatherIndex",games[room].bossId);
-        // socket.emit("sendLootPlayerTurn",games[room].lootTurnPlayerIndex);
     })
 
     socket.on("requestGameState", (room: string) => {
@@ -508,141 +512,146 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
     })
 
     socket.on("sendBulletAndTarget", (bullet: number, targetId: number, id: number, room: string) => {
-        const playerArray = games[room].playerArray;
-        playerArray[id].target = targetId;
-        playerArray[id].completedPhase = true;
-        playerArray[id].bulletChoice = bullet;
-        if (games[room].phase == "LOADANDAIM") {
-            if (bullet == 0) {
-                playerArray[id].blanks--;
+        if (games[room] === undefined) {
+            socket.emit("failedToAccessRoom");
+        }
+        else {
+            resetRoomTimeout(room, 1);
+            const playerArray = games[room].playerArray;
+            playerArray[id].target = targetId;
+            playerArray[id].completedPhase = true;
+            playerArray[id].bulletChoice = bullet;
+            if (games[room].phase == "LOADANDAIM") {
+                if (bullet == 0) {
+                    playerArray[id].blanks--;
+                }
+                else {
+                    playerArray[id].bullets--;
+                    games[room].discardedBullets++;
+                }
+                games[room].counter++;
+                if (games[room].counter == games[room].totalAlivePlayers) {
+                    games[room].counter = 0;
+                    games[room].phase="GODFATHERPRIV";
+                    setGodfatherIncomplete(playerArray,room);
+                    io.to(room).emit("getGameState",games[room]);
+                }
             }
-            else {
-                playerArray[id].bullets--;
-                // playerArray[targetId].pendingHits++;
-                games[room].discardedBullets++;
-            }
-            games[room].counter++;
-            if (games[room].counter == games[room].totalAlivePlayers) {
-                games[room].counter = 0;
-                games[room].phase="GODFATHERPRIV";
-                setGodfatherIncomplete(playerArray,room);
+            else if (games[room].phase == "GODFATHERPRIV") {
+                games[room].phase="GAMBLING";
+                setAllUncompleted(playerArray);
                 io.to(room).emit("getGameState",games[room]);
             }
-        }
-        else if (games[room].phase == "GODFATHERPRIV") {
-            // playerArray[targetId].pendingHits += bullet; // check this out to make sure nothing crazy is going on
-            games[room].phase="GAMBLING";
-            setAllUncompleted(playerArray);
-            // io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["target","player"])
-            io.to(room).emit("getGameState",games[room]);
         }
     })
 
     socket.on("sendGodfatherDecision",(id: number, target: number, room: string) => {
-        const playerArray = games[room].playerArray;
-        playerArray[id].completedPhase = true;
-        playerArray[target].completedPhase = false;
-        // playerArray[playerArray[target].target].pendingHits -= playerArray[target].bulletChoice;
-        // io.to(room).emit("sendPlayersAndPhase",playerArray,games[room].phase,["player"])
-        io.to(room).emit("getGameState",games[room]);
+        if (games[room] === undefined) {
+            socket.emit("failedToAccessRoom");
+        }
+        else {
+            resetRoomTimeout(room,1);
+            const playerArray = games[room].playerArray;
+            playerArray[id].completedPhase = true;
+            playerArray[target].completedPhase = false;
+            io.to(room).emit("getGameState",games[room]);
+        }
     })
 
     socket.on("continueToGambling", (room: string) => {
-        games[room].phase = "GAMBLING";
-        setAllUncompleted(games[room].playerArray)
-        games[room].playerArray[games[room].bossId]; // UPDATE
-        io.to(room).emit("getGameState",games[room]);
+        if (games[room] === undefined) {
+            socket.emit("failedToAccessRoom")
+        }
+        else {
+            resetRoomTimeout(room,1);
+            games[room].phase = "GAMBLING";
+            setAllUncompleted(games[room].playerArray)
+            games[room].playerArray[games[room].bossId]; 
+            io.to(room).emit("getGameState",games[room]);
+        }
     })
 
     socket.on("sendHidingChoice",(id: number, choice: boolean, room:string) => {
-        const playerArray = games[room].playerArray;
-        playerArray[id].completedPhase = true;
-        playerArray[id].hiding = choice;
-        games[room].counter++
-        if (games[room].counter == games[room].totalAlivePlayers) {
-            games[room].counter = 0;
-            // games[room].phase=Phase.Looting;
-            const looters: number[] = []
-            for (const player of playerArray) {
-                if (!player.hiding && !player.dead) {
-                    playerArray[player.target].pendingHits += player.bulletChoice;
-                }
-            }
-            for (let i = 0; i<playerArray.length; i++){
-                const player = playerArray[i]
-                if (!player.dead) {
-                    if (player.hiding) {
-                        player.pendingHits = 0;
+        if (games[room] === undefined) {
+            socket.emit("failedToAccessRoom");
+        }
+        else {
+            resetRoomTimeout(room,1)
+            const playerArray = games[room].playerArray;
+            playerArray[id].completedPhase = true;
+            playerArray[id].hiding = choice;
+            games[room].counter++
+            if (games[room].counter == games[room].totalAlivePlayers) {
+                games[room].counter = 0;
+                const looters: number[] = []
+                for (const player of playerArray) {
+                    if (!player.hiding && !player.dead) {
+                        playerArray[player.target].pendingHits += player.bulletChoice;
                     }
-                    else {
-                        player.health -= player.pendingHits;
-                        if (player.pendingHits == 0 && !player.dead) {
-                            looters.push(i)
-                            player.completedPhase = false;
+                }
+                for (let i = 0; i<playerArray.length; i++){
+                    const player = playerArray[i]
+                    if (!player.dead) {
+                        if (player.hiding) {
+                            player.pendingHits = 0;
                         }
                         else {
-                            player.damaged = true;
+                            player.health -= player.pendingHits;
+                            if (player.pendingHits == 0 && !player.dead) {
+                                looters.push(i)
+                                player.completedPhase = false;
+                            }
+                            else {
+                                player.damaged = true;
+                            }
+                            if (player.health <= 0) {
+                                player.dead = true;
+                                games[room].totalAlivePlayers--;
+                            }
+                            player.pendingHits = 0;
                         }
-                        if (player.health <= 0) {
-                            player.dead = true;
-                            games[room].totalAlivePlayers--;
-                        }
-                        player.pendingHits = 0;
                     }
                 }
-            }
-            if (games[room].totalAlivePlayers < 2) {
-                endGame(room);
-            }
-            else {
-            // setAllUncompleted(playerArray);
-            // const lootDict = getLootDict(games[room].lootDeck);
-            const organizedLooters = orderLooters(looters);
-            games[room].lootPlayers = organizedLooters;
-            // games[room].lootDict = lootDict;
-            games[room].lootTurnPlayerIndex = setInitialLooter(looters,games[room].bossId);
-            // CHANGE THIS TO JUST A PHASE CHANGE AND AN INFO THING
-            // games[room].phase = Phase.Shooting;
-            games[room].phase = "SHOOTING";
-            games[room].shooting = true;
-            io.to(room).emit("getGameState",games[room])
-            games[room].phase = "LOOTING";
-            games[room].shooting = false;
-            if (games[room].lootPlayers.length == 0) {
-                resetToRoundStart(room)
-            }
+                if (games[room].totalAlivePlayers < 2) {
+                    endGame(room);
+                }
+                else {
+                const organizedLooters = orderLooters(looters);
+                games[room].lootPlayers = organizedLooters;
+                games[room].lootTurnPlayerIndex = setInitialLooter(looters,games[room].bossId);
+                games[room].phase = "SHOOTING";
+                games[room].shooting = true;
+                io.to(room).emit("getGameState",games[room])
+                games[room].phase = "LOOTING";
+                games[room].shooting = false;
+                if (games[room].lootPlayers.length == 0) {
+                    resetToRoundStart(room)
+                }
+                }
             }
         }
-
     })
 
-    // socket.on("shotsFiredComplete", (room: string) => {
-    //     games[room].phase = Phase.Looting;
-    //     // games[room].lootTurnPlayerIndex = setInitialLooter(looters,games[room].bossId);
-
-    //     if (games[room].lootPlayers.length == 0) {
-    //         resetToRoundStart(room)
-            
-    //         // io.to(room).emit("sendPlayersAndPhase",games[room].playerArray,games[room].phase,["INIT"])
-    //     }
-    //     else {
-    //         io.to(room).emit("getGameState",games[room]);
-    //     }
-    // })
-
-    //THIS NEEDS TO BE REMOVED
-    socket.on("requestLootDict",(room: string) => {
-        socket.emit("sendLootDict",games[room].lootDict);
-    })
 
     socket.on("addItemToPlayer",(itemIndex: number, playerIndex: number, room: string) => {
-        const player = games[room].playerArray[playerIndex];
-        const item = games[room].lootDict[itemIndex];
-        stashItemOnPlayer(player,playerIndex,item,room);
-        io.to(room).emit("animateItem", itemIndex, playerIndex);
+        if (games[room] === undefined) {
+            socket.emit("failedToAccessRoom");
+        }
+        else {
+            resetRoomTimeout(room,1);
+            const player = games[room].playerArray[playerIndex];
+            const item = games[room].lootDict[itemIndex];
+            stashItemOnPlayer(player,playerIndex,item,room);
+            io.to(room).emit("animateItem", itemIndex, playerIndex);
+        }
     })
 
     socket.on("itemAnimationComplete", (itemIndex: number,playerIndex : number, room: string) => {
+        if (games[room] === undefined) {
+            socket.emit("failedToAccessRoom");
+        }
+        else {
+            resetRoomTimeout(room,1);
         games[room].lootDict[itemIndex] = new Loot("empty");
         games[room].counter++;
         if (games[room].counter >= 9) {
@@ -659,6 +668,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
             games[room].lootTurnPlayerIndex = findNextValue(games[room].lootPlayers,playerIndex);
             io.to(room).emit("getGameState",games[room]);
         }
+    }
     })
 
     socket.on("disconnect", (reason) => {
@@ -672,14 +682,8 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         }
     })
 
-    socket.on("socketDisconnected",(id:number, room: string) => {
-        if (games[room] !== undefined) {
-            games[room].playerArray[id].connected = false;
-        }
-    })
 
     function endGame(room: string) {
-        // const totalScores: number[]= [];
         const playerArray = games[room].playerArray;
         const alivePlayers : Player[]= []
 
@@ -726,6 +730,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
                 finalWinners.push(player)
             }
         }
+        resetRoomTimeout(room, 0.2);
         games[room].winners = finalWinners;
         games[room].phase = "GAMEOVER";
         io.to(room).emit("getGameState",games[room]);

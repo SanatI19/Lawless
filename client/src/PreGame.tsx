@@ -24,11 +24,12 @@ function PreGame() {
   const [name,setName] = useState<string>("");
   const [nameChange, setNameChange] = useState<boolean>(false);
   const [connectedArray, setConnectedArray] = useState<boolean[]>([true,true,true,true,true,true,true,true]);
+  const [hoverIndex, setHoverIndex] = useState<number>(-1);
   const {state} = useLocation()
   const room = state.room;
   console.log(room)
-  let playerId;
-  let deviceId;
+  let playerId : string;
+  let deviceId : string;
 
   // const sendName = (name: string, id: number)  => {
   //   setName(name)
@@ -57,6 +58,15 @@ function PreGame() {
   // useEffect(() => {
   //   socket.emit("requestRoom", room)
   // },[room])
+  // const removePlayer = (index: number) => {
+  //   console.log(`Removing player: ${index}`)
+  // } 
+  function removePlayer(index: number) {
+    console.log(`Removing player: ${index}`)
+    socket.emit("requestRemovePlayer", room, index);
+  }
+
+  console.log(hoverIndex);
 
     useEffect(() => {
         let playerUUID = sessionStorage.getItem("playerUUID");
@@ -92,6 +102,21 @@ function PreGame() {
           navigate(`/`)
         }
 
+        const handleRemovePlayerFromLobby = (index: number, playerArray: Player[]) => {
+          console.log(index)
+          setPlayerArray(playerArray);
+          if (thisId == index) {
+            navigate(`/`);
+          }
+          for (let i = 0; i < playerArray.length; i++) {
+            const player = playerArray[i]
+            if (player.deviceId == deviceId && player.internalId == playerId) {
+              thisId = i;
+            }
+          }
+        }
+
+
         const handleStartGame = () => {
           navigate(`/${room}/game`,{state :{room: room, id: thisId}})
         }
@@ -105,6 +130,7 @@ function PreGame() {
         socket.on("startGame", handleStartGame);
         socket.on("failedToAccessRoom",handleFailedToAccessRoom);
         socket.on("changeConnected",handleChangeConnected);
+        socket.on("removePlayerFromLobby",handleRemovePlayerFromLobby)
 
         return () => {
           socket.off("sendPlayerArray",handleSendPlayerArray);
@@ -112,6 +138,8 @@ function PreGame() {
           socket.off("startGame", handleStartGame);
           socket.off("failedToAccessRoom",handleFailedToAccessRoom);
           socket.off("changeConnected", handleChangeConnected);
+          socket.off("removePlayerFromLobby",handleRemovePlayerFromLobby)
+
         };
 
     },[])
@@ -122,10 +150,16 @@ function PreGame() {
         <input id="nameInput" autoComplete="off" type="text" maxLength={10} placeholder="Player name" value={name} onChange={(e) => 
           changeTheName(e)}/>  
         <button disabled={!nameChange} onClick={() => changeName(name)}>Change name</button>
+        {/* fontSize: hoverIndex == id ? "1.5em": "1em", */}
         {playerArray.map((player: Player, id: number) =>
-            <p key={id} style={{fontWeight: id==thisId ?  "bold" : "none", textDecoration: connectedArray[id] ? "none" : "line-through"}}>{player.name}</p>
-        )
-      }
+          <p key={id} 
+          className="text" 
+          style={{backgroundColor: thisId == 0 && hoverIndex == id && id != 0 ? "red": "white", fontWeight: id==thisId ?  "bold" : "none", textDecoration: connectedArray[id] ? "none" : "line-through"}} 
+          onMouseEnter={() =>setHoverIndex(id)} 
+          onMouseLeave={() => setHoverIndex(-1)} 
+          onClick={() => removePlayer(id)}>{player.name}</p>
+          )
+        }
       </div>
       <br/>
       {thisId === 0 ? (<button disabled={length < 3} onClick={triggerStartGame}>Start Game</button>) : null}

@@ -15,6 +15,7 @@ export interface ServerToClientEvents {
     animateItem: (itemIndex: number, playerIndex: number) => void;
     failedToAccessRoom: () => void;
     changeConnected: (playerArray: Player[]) => void;
+    removePlayerFromLobby: (index: number, playerArray: Player[]) => void;
     // list all of the server to client events here (so easy goddamn)
 }
 
@@ -38,6 +39,7 @@ export interface ClientToServerEvents {
     itemAnimationComplete: (itemIndex: number, playerIndex: number, room: string) => void;
     shotsFiredComplete: (room: string) => void;
     requestRoom: (room: string) => void;
+    requestRemovePlayer: (room: string, index: number) => void;
     // list all of the client to server events here 
 }
 
@@ -81,7 +83,7 @@ export type Phase = "LOADANDAIM" | "GODFATHERPRIV" | "GAMBLING" | "SHOOTING" | "
 
 export class Player {
     // Need to add more
-    public id : number = 0;
+    // public id : number = 0;
     public deviceId: string;
     public internalId: string;
     // public playerId : number = 0;
