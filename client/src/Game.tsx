@@ -252,12 +252,112 @@ function getRotationYGun(index: number, target: number): number {
 
 function getBulletChangeX(index: number, target: number) : number {
   const angle=calculateAngle(index,target);
+  const roundAngle = Math.round(angle);
+  console.log(angle)
+  console.log(roundAngle)
   let x = 0;
-  if (flipped(index,target) || angle == -90) {
-    x -= 5;
+  // if (roundAngle == 123) {
+  //   x -=2.4
+  // }
+  // else if (roundAngle == 180) {
+  //   x -= 4.2
+  // }
+  // else if (roundAngle == -90) {
+  //   x -= 1.4
+  // }
+  // else if (roundAngle == 26) {
+  //   x -= 0.4
+  // }
+  // else if (roundAngle == 206) {
+  //   x -= 4
+  // }
+  // else if (roundAngle == 248) {
+  //   x -=10
+  // }
+  switch (roundAngle) {
+    case -90:
+      x -=1.4
+      break
+    case -57:
+      x -= 0.3
+      break
+    case -26:
+      // x +=2
+      break
+    case -40:
+      // x += 0.5
+      break
+    // case -10:
+    case 17:
+      x -= 0.2
+      break
+    case 26:
+      x -= 0.4
+      break
+    case 40:
+      x -= 0.7
+      break
+    case 57:
+      x -= 1.6
+      break
+    case 90:
+      x -= 2.7
+      break
+    case 123:
+      x -= 2.5
+      break
+    case 140:
+      x -= 3
+      break
+    case 154:
+      x -= 3.7
+      break
+    case 163:
+      x -= 3.5
+      break
+    case 169:
+      x -= 4
+      break
+    case 170:
+      x -= 4
+      break
+    case 180:
+      x -=4.1
+      break
+    case 190:
+      x -=4
+      break
+    case 191:
+      x -= 4
+      break
+    case 194:
+      // y -=10
+      break
+    case 197:
+      x -=4.2
+      break
+    case 203:
+      // y -= 10
+      break
+    case 206:
+      x -=4
+      break
+    case 220: 
+      x -= 4
+      break
+    case 237:
+      x -= 3.6
+      break
+    case 248:
+      x -= 10
+      break
   }
-  const radAngle = angle*Math.PI/180;
-  x +=-2*Math.sin(radAngle)
+  // else if (Math.round())
+  // if (flipped(index,target) || angle == -90) {
+  //   x -= 5;
+  // }
+  // const radAngle = angle*Math.PI/180;
+  // x +=-2*Math.sin(radAngle)
   return x
 }
 
@@ -271,12 +371,124 @@ function getBulletDistanceChangeX(index: number, target: number) : number {
 
 function getBulletChangeY(index: number, target: number) : number {
   const angle=calculateAngle(index,target);
+  const roundAngle = Math.round(angle);
   let y = 0;
-  if (flipped(index,target) || angle == -90) {
-    y -= 5;
+  switch (roundAngle) {
+    case -90:
+      y -=4.5
+      break
+    case -57:
+      y -= 3.8
+      break
+    case -40:
+      y -=3.3
+      break
+    case -26:
+      y -= 2.7
+      break
+    case -17:
+      y -= 2.4
+      break
+    case -11:
+      y -= 2.3
+      break
+    case -10:
+      y -= 2.2
+      break
+    case 0:
+      y -=1.8
+      break
+    case 10:
+      y -= 1.4
+      break
+    case 11:
+      y -= 1.4
+      break
+    case 17:
+      y -= 1.3
+      break
+    case 26:
+      y -=1
+      break
+    case 40:
+      y -= 0.8
+      break
+    case 57:
+      y -= 0.6
+      break
+    case 90: 
+      y -= 0.5
+      break
+    case 123:
+      y -= 0.6
+      break
+    case 140:
+      y -= 0.7
+      break
+    case 154:
+      y -= 1.1
+      break
+    case 163:
+      y -= 1.3
+      break
+    case 169:
+      y -= 1.5
+      break
+    case 170:
+      y -= 1.5
+      break
+    case 180:
+      y -= 1.9
+      break
+    case 190:
+      y -= 2.3
+      break
+    case 191:
+      y -= 2.3
+      break
+    case 194:
+      // y -=10
+      break
+    case 197:
+      y -= 2.4
+      break
+    case 203:
+      // y -= 10
+      break
+    case 206:
+      y -=2.8
+      break
+    case 220: 
+      y -= 3.5
+      break
+    case 237:
+      y -= 3.8
+      break
+    case 248:
+      // y -= 10
+      break
   }
-  const radAngle = angle*Math.PI/180;
-  y +=-2*Math.cos(radAngle)
+  // if (roundAngle == 123) {
+  //   y -= 0.8
+  // }
+  // else if (roundAngle == 180) {
+  //   y -= 4.2
+  // }
+  // else if (roundAngle == -90) {
+  //   y -=4.5
+  // }
+  // else if (roundAngle == 26) {
+  //   y -= 1
+  // }
+  // else if (roundAngle == 206) {
+  //   y -= 2.8
+  // } 
+  // else if (roundAngle)
+  // if (flipped(index,target) || angle == -90) {
+  //   y -= 5;
+  // }
+  // const radAngle = angle*Math.PI/180;
+  // y +=-2*Math.cos(radAngle)
   return y
 }
 
@@ -479,6 +691,8 @@ function Game() {
     }
   }
   
+  console.log(phase)
+
     useEffect(() => {
       socket.emit("requestInitialState", room, thisId)
     },[room])
@@ -529,7 +743,7 @@ function Game() {
             }}
             onAnimationComplete={handleShotAnimationComplete}
           />
-        ) : (
+        ) : (!hidingArray[index] && !deadArray[index] &&
           <g>
           <motion.image
             // IT WOULD BE COOL IF IT COULD BE A MIST EFFECT TYPE THING THAT ACCUMULATES
@@ -925,7 +1139,7 @@ function Game() {
           ): doNothing} onMouseLeave={((playerButtons) && (index!== thisId)) ? (
             () => setHoverIndex(-1)
           ): doNothing}>
-            {(phase === "GAMEOVER" || index === thisId) ? (
+            {(phase === "GAMEOVER" || index === thisId || index !== thisId) ? (
               playerTable(index)
             ) : null}
             {playerImage(name,index)}

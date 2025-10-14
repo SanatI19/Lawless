@@ -94,11 +94,15 @@ function initGameTimer(roomId: string) {
 function resetRoomTimeout(room: string, multiplier: number) {
   if (!room) return;
   clearTimeout(gameTimers[room]);
+//   console.log(gameTimers[room])
+    delete gameTimers[room];
   gameTimers[room] = setTimeout(() => deleteRoom(room), multiplier* ROOM_TIMEOUT);
+//   console.log("New game timers")
+//   console.log(gameTimers[room])
 }
 
 function deleteRoom(room: string) {
-  if (games[room]) clearTimeout(gameTimers[room]);
+  if (games[room]) { clearTimeout(gameTimers[room]) };
   delete games[room];
 }
 
@@ -626,6 +630,7 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
                 games[room].shooting = false;
                 if (games[room].lootPlayers.length == 0) {
                     resetToRoundStart(room)
+                    io.to(room).emit("getGameState", games[room])
                 }
                 }
             }
