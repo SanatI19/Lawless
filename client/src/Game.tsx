@@ -584,6 +584,7 @@ function Game() {
   // const [winners, setWinners] = useState<Player[]>([]);
   const [winnersString, setWinnersString] = useState<string>("");
   const [gunHoverIndex, setGunHoverIndex] = useState<number>(-1);
+  const [popupOpen, setPopupOpen] = useState<boolean>(false);
   // const [playerTableHover, setPlayerTableHover] = useState<boolean>(false);
 
   const {state} = useLocation()
@@ -1045,6 +1046,43 @@ function Game() {
         )
     },[phase, lootDict, lootTurn, boughtItemIndex, itemAnimation, lootHovers])
 
+    function descriptionImage() : JSX.Element {
+      return <g>
+        <rect stroke="black" fill="white" x={1} y={1} height={48} width={98}></rect>
+        <image href={"/images/close.svg"} x={96} y={2} height={2} width={2} onClick={() => setPopupOpen(false)}/>
+          <line x1={30} x2={30} y1={2} y2={48} stroke="black" strokeWidth={0.75}></line>
+          <line x1={70} x2={70} y1={2} y2={48} stroke="black" strokeWidth={0.75}></line>
+          <text x="2" y="6" fontSize={5} fill="black">Goal</text>
+          <text x="5" y="10" fontSize="2" fill="black">
+            <tspan x="5" dy="2">This is line 1</tspan>
+            <tspan x="5" dy="2">This is line 2</tspan>
+            <tspan x="5" dy="2">This is line 3</tspan>
+          </text>
+          <text x="32" y="6" fontSize={5} fill="black">Gameplay</text>
+          <text x="32" y="10" fontSize={1.5} fill="black">
+            <tspan x="32" dy="1.5">0. Loot Dealing: At the beginning of each round, 8 new loot </tspan>
+            <tspan x="31" dy="1.5">cards will be revealed.</tspan>
+            <tspan x="32" dy="2">1. Load and Aim: Players will choose to either load a bullet or </tspan>
+            <tspan x="31" dy="2"> a blank into their gun, then choose another player to target.</tspan>
+            <tspan x="32" dy="2">2. Point Guns: Once all players have completed load and aim, </tspan>
+            <tspan x="31" dy="2">everyone will show their target</tspan>
+            <tspan x="32" dy="2">3. Boss privelege: The current boss gets to choose someone to</tspan>
+            <tspan x="31" dy="2">change their target. That person will be forced to point</tspan>
+            <tspan x="31" dy="2">their gun at a different player</tspan>
+            <tspan x="32" dy="2">4. Gambling: After each player's target is finalized, each </tspan>
+            <tspan x="31" dy="2">player can choose to shoot and remain eligible to loot, or put a</tspan>
+            <tspan x="31" dy="2">shield up to protect themself, opting out of looting for the round.</tspan>
+            <tspan x="32" dy="2">6. Looting: Starting with the boss and going clockwise, all</tspan>
+            <tspan x="31" dy="2">players who did not shield and were not damaged this round</tspan>
+            <tspan x="31" dy="2">will take turns looting. Players will continue to loot until all </tspan>
+            <tspan x="31" dy="2">loot cards are gone. If there are no eligible players to loot, then</tspan>
+            <tspan x="31" dy="2">all of the loot cards for the round will be voided.</tspan>
+
+          </text>
+          <text x="72" y="6" fontSize={5} fill="black">Scoring</text>
+      </g>
+    }
+
     useEffect(() => {
       const handleGetNames = (playerArray: Player[]) => {
         setPlayerNames(playerArray.map(player => player.name));
@@ -1125,7 +1163,7 @@ function Game() {
       <g>
           <rect x="0" y="0" width="100" height={50} fill="white" stroke="black" strokeWidth={0.1}/>
           <text className="text" x="1" y="3" fontSize="3">Round {round+1}</text>
-
+          <image href="/images/info.svg" x={97.5} y={0.5} height={2} width={2} onClick={() => setPopupOpen(true)}/>
           {phase ==="GAMEOVER" ? null: lootImages}
           {playerNames.map((name: string, index: number) => 
           <g key={index} onClick={((playerButtons) && (index!== thisId) && (!deadArray[index]) && !((phase=="GODFATHERPRIV") && (thisId !== godfatherIndex) && (index === targetArray[thisId]))) ? (
@@ -1233,7 +1271,9 @@ function Game() {
             }
           })()}
       </g>)}
-
+    {popupOpen && 
+      descriptionImage()
+    }
     </svg>
 }
 

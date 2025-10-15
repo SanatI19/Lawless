@@ -55,7 +55,7 @@ function createNewRandomizedLootDeck(): Loot[] {
             lootCards.push(new Loot("cash",10000));
         }
         else if (i < 40) {
-            lootCards.push(new Loot("cash",10000));
+            lootCards.push(new Loot("cash",20000));
         }
         else if (i < 50) {
             lootCards.push(new Loot("nft"));
@@ -103,6 +103,7 @@ function resetRoomTimeout(room: string, multiplier: number) {
 
 function deleteRoom(room: string) {
   if (games[room]) { clearTimeout(gameTimers[room]) };
+  io.to(room).emit("failedToAccessRoom");
   delete games[room];
 }
 
