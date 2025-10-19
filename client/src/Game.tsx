@@ -26,7 +26,10 @@ const bandageImage = "/images/bandage.svg";
 const heartImage = "/images/heart.svg";
 const blankImage = "/images/blank.svg";
 const shieldImage = "/images/shield.svg";
-
+const playerTableColor = "#909090";
+const backgroundColor = "#323A4F";
+const playerTableBackgroundColor = "#5682B1";
+const lootBackgroundColor = "#FFE8D8";
 
 function flipped(index1: number, index2: number) : boolean {
   const angle = calculateAngle(index1,index2);
@@ -210,12 +213,12 @@ function getX(id: number) : number {
     return x;
   }
   function getLootY(id: number) : number {
-    let y = 28;
+    let y = 29;
     if (id == 0) {
-      y = 18
+      y = 20
     }
     else if (id <=4) {
-      y = 23
+      y = 24.5
     }
     return y;
   }
@@ -585,6 +588,7 @@ function Game() {
   const [winnersString, setWinnersString] = useState<string>("");
   const [gunHoverIndex, setGunHoverIndex] = useState<number>(-1);
   const [popupOpen, setPopupOpen] = useState<boolean>(false);
+  // const [godfatherDecided, setGodfatherDecided] = useState<boolean>(false);
   // const [playerTableHover, setPlayerTableHover] = useState<boolean>(false);
 
   const {state} = useLocation()
@@ -627,6 +631,7 @@ function Game() {
     else if (phase == "GODFATHERPRIV") {
       if (thisId == godfatherIndex) {
         socket.emit("sendGodfatherDecision",thisId,index,room);
+        // setGodfatherDecided(true);
       }
       else {
         const val = [...targetArray]
@@ -916,10 +921,10 @@ function Game() {
       let width = getWidth(index);
       let height = getHeight(index);
       return <g>
-              <rect x={getContainerX(index)} y={getContainerY(index)} width={width} height={height} fill="tan" stroke="black" strokeWidth={0.2}/>
-              <rect x={getButtonLocationX(index)-0.5} y={getButtonLocationY(index)-1} width={index < 4 ? 10 : 5} height={index < 4 ? 6 : 12} fill="white" stroke="black" strokeWidth={0.1}></rect>
+              <rect x={getContainerX(index)} y={getContainerY(index)} width={width} height={height} fill={playerTableColor} stroke="white" strokeWidth={0.2}/>
+              <rect x={getButtonLocationX(index)-0.5} y={getButtonLocationY(index)-1} width={index < 4 ? 10 : 5} height={index < 4 ? 6 : 12} fill={playerTableBackgroundColor} stroke="white" strokeWidth={0.1}></rect>
               <g>
-                <rect x={x} y={y-1} width="10" height="5" fill="white" stroke="black" strokeWidth="0.1" opacity={phase !== "GAMBLING" ? 1 : 0.3}></rect>
+                <rect x={x} y={y-1} width="10" height="5" fill={playerTableBackgroundColor} stroke="white" strokeWidth="0.1" opacity={phase !== "GAMBLING" ? 1 : 0.3}></rect>
                 <text className="text" x={x+0.1} y={y+0.75} fontSize="2" opacity={phase !== "GAMBLING" ? 1 : 0.3}>${playerArray[index].money}</text>
                 <image href={getImage("gem")} x={x+2} y={y+2} height="2" width="2" opacity={phase !== "GAMBLING" ? 1 : 0.3}/>
                 <text className="text" x={x+1} y={y+3.5} fontSize="2" opacity={phase !== "GAMBLING" ? 1 : 0.3}>{playerArray[index].gems}</text>
@@ -1053,13 +1058,31 @@ function Game() {
           <line x1={30} x2={30} y1={2} y2={48} stroke="black" strokeWidth={0.75}></line>
           <line x1={70} x2={70} y1={2} y2={48} stroke="black" strokeWidth={0.75}></line>
           <text x="2" y="6" fontSize={5} fill="black">Goal</text>
-          <text x="5" y="10" fontSize="2" fill="black">
-            <tspan x="5" dy="2">This is line 1</tspan>
-            <tspan x="5" dy="2">This is line 2</tspan>
-            <tspan x="5" dy="2">This is line 3</tspan>
+          <text x="2" y="7" fontSize="2" fill="black">
+            <tspan x="2.5" dy="2">Your goal is to be the richest  </tspan>
+            <tspan x="2" dy="2">player still alive at the end of </tspan>
+            <tspan x="2" dy="2">Lawless looting. The game plays</tspan>
+            <tspan x="2" dy="2">across 8 rounds, with each round </tspan>
+            <tspan x="2" dy="2">consisting of the same 7 steps.</tspan>
+            <tspan x="2.5" dy="2">Players will attempt to gain loot,</tspan>
+            <tspan x="2" dy="2">with the following loot cards: </tspan>
+            <tspan x="2.5" dy="2" fontSize="1.5">•Cash: $5K*15, $10K*15, $20K*10</tspan>
+            <tspan x="2.5" dy="2" fontSize="1.5">•Gems: $1K*5, $5K*3, $10K*1</tspan>
+            <tspan x="2.5" dy="2" fontSize="1.5">•NFTs: 10, no inherent value</tspan>
+            <tspan x="2.5" dy="2" fontSize="1.5">•Clips: 3</tspan>
+            <tspan x="2.5" dy="2" fontSize="1.5">•Med kits: 2</tspan>
+            <tspan x="2.5" dy="2">Cash, gems, and NFTs will be</tspan>
+            <tspan x="2" dy="2">used for scoring at the end of </tspan>
+            <tspan x="2" dy="2">the game. Clips will give an </tspan>
+            <tspan x="2" dy="2">extra bullet as long as a bullet </tspan>
+            <tspan x="2" dy="2">has been used in the game. Med </tspan>
+            <tspan x="2" dy="2">kits fully replenish a player's</tspan>
+            <tspan x="2" dy="2">health. Player's start with 3 </tspan>
+            <tspan x="2" dy="2">bullets, and 5 blanks.</tspan>
           </text>
+
           <text x="32" y="6" fontSize={5} fill="black">Gameplay</text>
-          <text x="32" y="10" fontSize={1.5} fill="black">
+          <text x="32" y="7" fontSize={1.5} fill="black">
             <tspan x="32" dy="1.5">0. Loot Dealing: At the beginning of each round, 8 new loot </tspan>
             <tspan x="31" dy="1.5">cards will be revealed.</tspan>
             <tspan x="32" dy="2">1. Load and Aim: Players will choose to either load a bullet or </tspan>
@@ -1072,6 +1095,10 @@ function Game() {
             <tspan x="32" dy="2">4. Gambling: After each player's target is finalized, each </tspan>
             <tspan x="31" dy="2">player can choose to shoot and remain eligible to loot, or put a</tspan>
             <tspan x="31" dy="2">shield up to protect themself, opting out of looting for the round.</tspan>
+            <tspan x="32" dy="2">5. Shooting: Players actions will be revealed, either shooting a </tspan>
+            <tspan x="31" dy="2">bullet, shooting a blank, or putting the shield up. Players who </tspan>
+            <tspan x="31" dy="2">were targeted with a bullet will take 1 damage per bullet that hit </tspan>
+            <tspan x="31" dy="2">them. Nothing happens to players targeted with a blank. </tspan>
             <tspan x="32" dy="2">6. Looting: Starting with the boss and going clockwise, all</tspan>
             <tspan x="31" dy="2">players who did not shield and were not damaged this round</tspan>
             <tspan x="31" dy="2">will take turns looting. Players will continue to loot until all </tspan>
@@ -1080,8 +1107,64 @@ function Game() {
 
           </text>
           <text x="72" y="6" fontSize={5} fill="black">Scoring</text>
+            <text x="72" y="7" fontSize={1.5} fill="black">
+            <tspan x="72" dy="2">A player's total worth will be calculated at </tspan>
+            <tspan x="71" dy="2">the end of the game. Any player who is dead</tspan>
+            <tspan x="71" dy="2">will have no worth. Cash, gems, and NFTs</tspan>
+            <tspan x="71" dy="2">are used to calculate a player's total worth, </tspan>
+            <tspan x="71" dy="2">according to the following steps:</tspan>
+            <tspan x="72" dy="2">1. The monetary value of cash and gems are</tspan>
+            <tspan x="71" dy="2">summed. Throughout the game this will</tspan>
+            <tspan x="71" dy="2">automatically change in your player space.</tspan>
+            <tspan x="72" dy="2">2. The value of NFTs are determined, using</tspan>
+            <tspan x="71" dy="2">the following table:</tspan>
+            <tspan x="73" dy="1.5" fontSize={1.2}>1 - $4K, 2 - $12K, 3 - $30K, 4 - $60K</tspan>
+            <tspan x="73" dy="1.5" fontSize={1.2}>5 - $100K, 6 - $150K, 7 - $200K, 8 - $300K</tspan>
+            <tspan x="73" dy="1.5" fontSize={1.2}>9 - $400K, 10 - $$500K</tspan>                        
+            <tspan x="72" dy="2">3. At the end of the game, additional</tspan>
+            <tspan x="71" dy="2">bonuses are determined for gems. The </tspan>
+            <tspan x="71" dy="2">player with the most gems gains $60K</tspan>
+            <tspan x="71" dy="2">bonus. If there is a tie, then nobody</tspan>
+            <tspan x="71" dy="2">gains the bonus.</tspan>
+            <tspan x="72" dy="3" fill="green">The player with the most value at the end</tspan>
+            <tspan x="71" dy="2" fill="green">of the game wins!</tspan>
+          </text>
       </g>
     }
+
+    const backgroundImage : JSX.Element = 
+      <g>
+        <rect x="0" y="0" width="100" height={50} fill={backgroundColor} stroke="black" strokeWidth={0.1}/>
+        <rect x={getLootX(1) - 1} y={getLootY(0)-0.5} width={42} height={15} fill={lootBackgroundColor} stroke="black" strokeWidth={0.1}></rect>
+      </g>
+    
+    function getSkipText(lower : boolean): JSX.Element {
+      if (lower) {
+        return <text className="text" x={getButtonLocationX(godfatherIndex)+2.5} y={getButtonLocationY(godfatherIndex)+2.5} fontSize="2">Skip</text>
+
+      }
+      else {
+        return <g>
+          <text className="text" x={getButtonLocationX(godfatherIndex)+2} y={getButtonLocationY(godfatherIndex)+2.5} fontSize="2">S</text>
+          <text className="text" x={getButtonLocationX(godfatherIndex)+2} y={getButtonLocationY(godfatherIndex)+4} fontSize="2">k</text>
+          <text className="text" x={getButtonLocationX(godfatherIndex)+2} y={getButtonLocationY(godfatherIndex)+5.5} fontSize="2">i</text>
+          <text className="text" x={getButtonLocationX(godfatherIndex)+2} y={getButtonLocationY(godfatherIndex)+6.5} fontSize="2">p</text>
+        </g>
+      }
+    }
+
+    const skipButton = useMemo(() => {
+      const lower = godfatherIndex < 4;
+      const width = lower ? 6 : 2;
+      const height = lower ? 2: 6;
+      // const x = lower ? getButtonLocationX(godfatherIndex): ;
+      // const y = lower ? getButtonLocationY(godfatherIndex): getBu;
+      return <g onClick={skipGodFatherPriv} onMouseEnter={() => {setSkipHover(true)}} onMouseLeave={() => {setSkipHover(false)}}>
+        <rect x={getButtonLocationX(godfatherIndex)+1.5} y={getButtonLocationY(godfatherIndex)+1} height={height} width={width} fill="white" stroke="black" strokeWidth={skipHover ? "0.3" : "0.1"} onClick={skipGodFatherPriv}>Skip</rect>
+        {/* <text className="text" x={getButtonLocationX(godfatherIndex)+2.5} y={getButtonLocationY(godfatherIndex)+2.5} fontSize="2">Skip</text> */}
+        {getSkipText(lower)}
+      </g>
+    },[godfatherIndex, phase, skipHover])
 
     useEffect(() => {
       const handleGetNames = (playerArray: Player[]) => {
@@ -1161,9 +1244,9 @@ function Game() {
 
   return <svg id="main" x = "0px" y="0px" xmlns = "http://www.w3.org/2000/svg" viewBox="0 0 100 50">
       <g>
-          <rect x="0" y="0" width="100" height={50} fill="white" stroke="black" strokeWidth={0.1}/>
-          <text className="text" x="1" y="3" fontSize="3">Round {round+1}</text>
-          <image href="/images/info.svg" x={97.5} y={0.5} height={2} width={2} onClick={() => setPopupOpen(true)}/>
+          {backgroundImage}
+          <text className="outerText" x="1" y="3" fontSize="3">Round {round+1}</text>
+          <image href="/images/info.svg" x={97.5} y={0.5} height={2} width={2} fill="white" onClick={() => setPopupOpen(true)}/>
           {phase ==="GAMEOVER" ? null: lootImages}
           {playerNames.map((name: string, index: number) => 
           <g key={index} onClick={((playerButtons) && (index!== thisId) && (!deadArray[index]) && !((phase=="GODFATHERPRIV") && (thisId !== godfatherIndex) && (index === targetArray[thisId]))) ? (
@@ -1177,7 +1260,7 @@ function Game() {
           ): doNothing} onMouseLeave={((playerButtons) && (index!== thisId)) ? (
             () => setHoverIndex(-1)
           ): doNothing}>
-            {(phase === "GAMEOVER" || index === thisId || index !== thisId) ? (
+            {(phase === "GAMEOVER" || index === thisId || index != thisId) ? (
               playerTable(index)
             ) : null}
             {playerImage(name,index)}
@@ -1195,14 +1278,14 @@ function Game() {
               case "LOADANDAIM":
                 return <g>
                   {(completedPhase && !(deadArray[thisId])) ? (
-                    <text className="text" x="30" y={centerTextY} fontSize="2">Waiting for other players to select bullet and target...</text>
+                    <text className="outerText" x="30" y={centerTextY} fontSize="2">Waiting for other players to select bullet and target...</text>
                   ) : (null)}
                   {((!bulletChoice) && (!completedPhase)) ? (
-                    <text className="text" x="38" y={centerTextY} fontSize="3">Choose a target</text>
+                    <text className="outerText" x="38" y={centerTextY} fontSize="3">Choose a target</text>
                   ): null}
                   {((bulletChoice) && (!completedPhase)) ? (
                     <>
-                    <text className="text" x="30" y={centerTextY} fontSize="3">Choose what to load in your gun this round</text>
+                    <text className="outerText" x="30" y={centerTextY} fontSize="3">Choose what to load in your gun this round</text>
                     {thisPlayer.bullets > 0 && (bulletImage(1))}
                       {thisPlayer.blanks > 0 && (bulletImage(0))}
                     </>) : null}
@@ -1210,32 +1293,36 @@ function Game() {
                   </g>;
               case "GODFATHERPRIV":
                 return <g>
-                    {(completedPhase && !(deadArray[thisId])) ? (
-                      <text className="text" x="30" y={centerTextY} fontSize="2">Waiting for {playerNames[godfatherIndex]} to use privelege...</text>
+                    {(completedPhase && !(deadArray[thisId]) && !playerArray[godfatherIndex].completedPhase) ? (
+                      <text className="outerText" x="30" y={centerTextY} fontSize="2">Waiting for {playerNames[godfatherIndex]} to use privelege...</text>
+                    ) : (null)}
+                    {(completedPhase && !(deadArray[thisId]) && playerArray[godfatherIndex].completedPhase) ? (
+                      <text className="outerText" x="30" y={centerTextY} fontSize="2">Waiting for a player to change target...</text>
                     ) : (null)}
                     {((thisId === godfatherIndex) && playerButtons) ? (
-                      <text className="text" x="28" y={centerTextY} fontSize="3">Choose a player to change their target, or skip</text>
+                      <text className="outerText" x="28" y={centerTextY} fontSize="3">Choose a player to change their target, or skip</text>
                     ): null}
                     {((thisId !== godfatherIndex) && playerButtons) ? (
-                      <text className="text" x="30" y={centerTextY} fontSize="3">Choose a different player to target</text>
+                      <text className="outerText" x="30" y={centerTextY} fontSize="3">Choose a different player to target</text>
                     ): null}
                     {guns}
                     {((thisId === godfatherIndex) && (playerButtons)) ? (
-                      <g onClick={skipGodFatherPriv} onMouseEnter={() => {setSkipHover(true)}} onMouseLeave={() => {setSkipHover(false)}}>
-                        <rect x="48" y="25" height="2" width="6" fill="white" stroke="black" strokeWidth={skipHover ? "0.3" : "0.1"} onClick={skipGodFatherPriv}>Skip</rect>
-                        <text className="text" x="49" y="26.5" fontSize="2">Skip</text>
-                      </g>
+                      // <g onClick={skipGodFatherPriv} onMouseEnter={() => {setSkipHover(true)}} onMouseLeave={() => {setSkipHover(false)}}>
+                      //   <rect x="48" y="25" height="2" width="6" fill="white" stroke="black" strokeWidth={skipHover ? "0.3" : "0.1"} onClick={skipGodFatherPriv}>Skip</rect>
+                      //   <text className="text" x="49" y="26.5" fontSize="2">Skip</text>
+                      // </g>
+                      skipButton
                     ): null}
                   </g>;
               case "GAMBLING":
                 return <g>
                     {(completedPhase && !(deadArray[thisId])) ? (
-                      <text className="text" x="35" y={centerTextY} fontSize="2">Waiting for other players to gamble...</text>
+                      <text className="outerText" x="35" y={centerTextY} fontSize="2">Waiting for other players to gamble...</text>
                     ) : (null)}
                     {guns}
                     {(!completedPhase) ? (
                       <g id="choices">
-                        <text className="text" x="30" y={centerTextY} fontSize={3}>Choose to hide or stay for the round</text>
+                        <text className="outerText" x="30" y={centerTextY} fontSize={3}>Choose to hide or stay for the round</text>
 
                         {gunOrShieldImage(0)}
                         {gunOrShieldImage(1)}
@@ -1250,9 +1337,9 @@ function Game() {
               case "LOOTING":
                 return <g>
                   {(completedPhase && !(deadArray[thisId])) ? (
-                    <text className="text" x="30" y={centerTextY} fontSize="2">Waiting for other players to loot...</text>
+                    <text className="outerText" x="30" y={centerTextY} fontSize="2">Waiting for other players to loot...</text>
                   ) : 
-                    (lootTurnIndex != thisId ? <text className="text" x="40" y={centerTextY} fontSize="2">Waiting for {playerNames[lootTurnIndex]} to loot...</text> : <text className="text" x="40" y={centerTextY} fontSize="2">Choose a loot card</text>)
+                    (lootTurnIndex != thisId ? <text className="outerText" x="40" y={centerTextY} fontSize="2">Waiting for {playerNames[lootTurnIndex]} to loot...</text> : <text className="text" x="40" y={centerTextY} fontSize="2">Choose a loot card</text>)
                   }
 
                   {damagedArray.map((value,index) => 

@@ -35,7 +35,7 @@ const roomCodeLength = 4;
 const maxPlayers = 8;
 const ROOM_TIMEOUT= 10*1000*60; // 10 min timer
 
-
+const safeWords : string[] = ["FUCK","SHIT", "CUNT", "NIGG", "NGAA", "NIGA", "ANUS", "CLIT", "COCK", "COON", "DAMN","DICK", "DIKE","DYKE", "GOOK","HELL","HOMO","KUNT","JIZZ","NAZI", "MUFF","PAKI","PISS","SLUT","TARD","TITS","TWAT","WANK"];
 
 function randomizeArray(array: any[]) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -361,6 +361,9 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         let roomId: string = "";
         for (let i = 0; i < 10000; i++) {
             roomId = generateRoomCode();
+            if (safeWords.includes(roomId)) {
+                continue;
+            }
             if (games[roomId] === undefined) {
                 ableToCreateRoom = true;
                 break

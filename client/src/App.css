@@ -8,6 +8,13 @@
 .text {
   user-select: none;
   cursor: default;
+  /* fill: white; */
+}
+
+.outerText {
+  user-select: none;
+  cursor: default;
+  fill: white;
 }
 
 .pulse {
