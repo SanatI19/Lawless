@@ -318,10 +318,6 @@ const gameTimers : Record<string,NodeJS.Timeout> = {}
 const socketToRoom : Record<string,string> = {};
 
 io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) => {
-    socket.on("clientMsg",(data) => {
-        io.sockets.emit("serverMsg",data);
-    })
-
     socket.on("joinRoom",(room: string, deviceId: string, playerId: string) => {
         let outRoom = "";
         let reason = "";
@@ -384,11 +380,11 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
         }
     })
 
-    socket.on("requestRoom", (room: string) => {
-        if (games[room] === undefined) {
-            socket.emit("failedToAccessRoom");
-        }
-    })
+    // socket.on("requestRoom", (room: string) => {
+    //     if (games[room] === undefined) {
+    //         socket.emit("failedToAccessRoom");
+    //     }
+    // })
 
 
     socket.on("joinPlayerArray",(room: string, deviceId: string, playerId: string) => {

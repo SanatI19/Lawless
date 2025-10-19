@@ -3,15 +3,7 @@ import { useContext, useEffect, useState} from "react";
 import { useNavigate, useLocation} from "react-router-dom";
 import { SocketContext } from "./App";
 import { Player } from "../../shared";
-// const {state} = useLocation()
 
-
-// const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io("http://localhost:3000/")
-
-// socket.on("connect", () => {
-//   console.log(`Client ${socket.id}`)
-// })
-// let count = 0;
 let thisId: number;
 
 function PreGame() {
@@ -27,15 +19,9 @@ function PreGame() {
   const [hoverIndex, setHoverIndex] = useState<number>(-1);
   const {state} = useLocation()
   const room = state.room;
-  console.log(room)
   let playerId : string;
   let deviceId : string;
 
-  // const sendName = (name: string, id: number)  => {
-  //   setName(name)
-  //   socket.emit("sendName",name,id,room);
-  // }
-  console.log(connectedArray);
   
   const triggerStartGame = () => {
     socket.emit("triggerStartGame",room)
@@ -51,16 +37,7 @@ function PreGame() {
     setNameChange(false);
     socket.emit("sendName", name, thisId,room);
   }
-//   setRoom(state.room)
 
-//   const handleSubmit = (e:FormEvent) => {
-//     e.preventDefault();
-  // useEffect(() => {
-  //   socket.emit("requestRoom", room)
-  // },[room])
-  // const removePlayer = (index: number) => {
-  //   console.log(`Removing player: ${index}`)
-  // } 
   function removePlayer(index: number) {
     console.log(`Removing player: ${index}`)
     socket.emit("requestRemovePlayer", room, index);
@@ -77,16 +54,15 @@ function PreGame() {
         if (deviceUUID === null) {
           deviceUUID = crypto.randomUUID();
         }
-        // console.log(room)
+
         playerId = playerUUID;
         sessionStorage.setItem("playerUUID",playerId);
-        // console.log(playerId)
+
         deviceId = deviceUUID;
         localStorage.setItem("deviceUUIDlawlessForever",deviceId);
-        // console.log("AYO")
+
     
         socket.emit("joinPlayerArray", room, deviceId, playerId)
-        // console.log("")
 
         const handleGetPlayerIndex = (index: number) => {
             thisId = index;
@@ -150,7 +126,6 @@ function PreGame() {
         <input id="nameInput" autoComplete="off" type="text" maxLength={10} placeholder="Player name" value={name} onChange={(e) => 
           changeTheName(e)}/>  
         <button disabled={!nameChange} onClick={() => changeName(name)}>Change name</button>
-        {/* fontSize: hoverIndex == id ? "1.5em": "1em", */}
         {playerArray.map((player: Player, id: number) =>
           <p key={id} 
           className="text" 
@@ -163,18 +138,6 @@ function PreGame() {
       </div>
       <br/>
       {thisId === 0 ? (<button disabled={length < 3} onClick={triggerStartGame}>Start Game</button>) : null}
-      {/* <div>
-        <input type="text" placeholder="Room number" value={room} onChange={(e) => setRoom(e.target.value.toUpperCase())}/>
-        <button onClick={joinRoom}>Join Room</button>
-      </div>
-      <div>
-        <button onClick={createRoom}>Create Room</button>
-      </div> */}
-      {/* <form onSubmit={handleSubmit}>
-        <input type="text" placeholder="Enter room key" value={room} onChange={(e) => setRoom(e.target.value)}/>
-        <input type="text" placeholder="Enter message" value={msg} onChange={(e) => setMsg(e.target.value)}/>
-        <button>Send Message</button>
-      </form> */}
     </div>
   
 }
