@@ -921,18 +921,21 @@ function Game() {
       let width = getWidth(index);
       let height = getHeight(index);
       return <g>
+              {index == thisId ? <g>
+                <rect x={getContainerX(index)} y={getContainerY(index)} width={width} height={height} fill={getLootCardColor("cash")} stroke={getLootCardColor("cash")} strokeWidth={1}/>
+              </g> : null}
               <rect x={getContainerX(index)} y={getContainerY(index)} width={width} height={height} fill={playerTableColor} stroke="white" strokeWidth={0.2}/>
-              <rect x={getButtonLocationX(index)-0.5} y={getButtonLocationY(index)-1} width={index < 4 ? 10 : 5} height={index < 4 ? 6 : 12} fill={playerTableBackgroundColor} stroke="white" strokeWidth={0.1}></rect>
+              {index == thisId ? <rect x={getButtonLocationX(index)-0.5} y={getButtonLocationY(index)-1} width={index < 4 ? 10 : 5} height={index < 4 ? 6 : 12} fill={playerTableBackgroundColor} stroke="white" strokeWidth={0.1}/> : null}
               <g>
                 <rect x={x} y={y-1} width="10" height="5" fill={playerTableBackgroundColor} stroke="white" strokeWidth="0.1" opacity={phase !== "GAMBLING" ? 1 : 0.3}></rect>
-                <text className="text" x={x+0.1} y={y+0.75} fontSize="2" opacity={phase !== "GAMBLING" ? 1 : 0.3}>${playerArray[index].money}</text>
+                <text className="text" x={x+0.1} y={y+0.75} fontSize="2" opacity={phase !== "GAMBLING" ? 1 : 0.3}>${index == thisId ? playerArray[index].money: "???"}</text>
                 <image href={getImage("gem")} x={x+2} y={y+2} height="2" width="2" opacity={phase !== "GAMBLING" ? 1 : 0.3}/>
-                <text className="text" x={x+1} y={y+3.5} fontSize="2" opacity={phase !== "GAMBLING" ? 1 : 0.3}>{playerArray[index].gems}</text>
+                <text className="text" x={x+1} y={y+3.5} fontSize="2" opacity={phase !== "GAMBLING" ? 1 : 0.3}>{index== thisId ? playerArray[index].gems: "?"}</text>
                 <image href={getImage("nft")} x={x+8} y={y+1.75} height="2" width="2" opacity={phase !== "GAMBLING" ? 1 : 0.3}/>
-                <text className="text" x={x+7} y={y+3.5} fontSize="2" opacity={phase !== "GAMBLING" ? 1 : 0.3}>{playerArray[index].nft}</text>
-                {Array.from({length: playerArray[index].bullets}).map((_, i: number) => (
+                <text className="text" x={x+7} y={y+3.5} fontSize="2" opacity={phase !== "GAMBLING" ? 1 : 0.3}>{index == thisId ? playerArray[index].nft: "?"}</text>
+                {index == thisId ? Array.from({length: playerArray[index].bullets}).map((_, i: number) => (
                   <image key={i} href={getImage("clip")} x={x+8.5-i*0.5} y={y-0.9} height="2" width="2" opacity={phase !== "GAMBLING" ? 1 : 0.3}/>
-                ))}
+                )): null}
               </g>
             </g>
     }

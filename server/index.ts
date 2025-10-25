@@ -386,6 +386,8 @@ io.on("connection", (socket: Socket<ClientToServerEvents,ServerToClientEvents>) 
     //     }
     // })
 
+    
+
 
     socket.on("joinPlayerArray",(room: string, deviceId: string, playerId: string) => {
         if (games[room] === undefined) {
